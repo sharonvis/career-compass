@@ -1,6 +1,10 @@
 import pytest
 
-from services.scoring_service import calculate_career_readiness, calculate_skill_credit
+from services.scoring_service import (
+    calculate_career_readiness,
+    calculate_confirmed_skill_gap,
+    calculate_skill_credit,
+)
 
 
 @pytest.mark.parametrize("required_level", [0, -1])
@@ -136,3 +140,33 @@ def test_readiness_stays_in_range(levels, factor, expected):
     result = calculate_career_readiness(skills, unassessed_factor=factor)
     assert 0.0 <= result <= 1.0
     assert result == pytest.approx(expected)
+
+
+def test_unassessed_confirmed_gap_is_none():
+    assert calculate_confirmed_skill_gap(3, demonstrated_level=None) is None
+
+
+@pytest.mark.parametrize(
+    "required_level, demonstrated_level, expected",
+    [(3, 0, 3), (3, 1, 2), (3, 3, 0), (2, 3, 0), (3, -2, 3)],
+)
+def test_assessed_confirmed_gap(required_level, demonstrated_level, expected):
+    result = calculate_confirmed_skill_gap(required_level, demonstrated_level)
+    assert result == expected
+    assert isinstance(result, int)
+
+
+@pytest.mark.parametrize(
+    "required_level, demonstrated_level",
+    [(0, 1), (-1, 1), (0, None)],
+)
+def test_nonpositive_required_level_raises_for_confirmed_gap(
+    required_level, demonstrated_level
+):
+    with pytest.raises(ValueError) as error:
+        calculate_confirmed_skill_gap(required_level, demonstrated_level)
+    assert str(error.value) == "required_level must be greater than 0."
+
+
+def test_confirmed_gap_defaults_to_unassessed():
+    assert calculate_confirmed_skill_gap(required_level=3) is None

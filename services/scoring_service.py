@@ -48,3 +48,18 @@ def calculate_career_readiness(
 
     readiness = total_contribution / total_importance
     return min(max(readiness, 0.0), 1.0)
+
+
+def calculate_confirmed_skill_gap(
+    required_level: int,
+    demonstrated_level: int | None = None,
+) -> int | None:
+    """Return the assessed skill gap, or None when the skill is unassessed."""
+    if required_level <= 0:
+        raise ValueError("required_level must be greater than 0.")
+
+    if demonstrated_level is None:
+        return None
+
+    demonstrated_level = max(demonstrated_level, 0)
+    return max(required_level - demonstrated_level, 0)
