@@ -67,6 +67,10 @@ def calculate_confirmed_skill_gap(
 
 def select_next_action(skills: list[dict]) -> dict | None:
     """Choose a confirmed gap to improve, or an unassessed skill to assess."""
+    demonstrated_levels = {
+        skill["name"]: skill.get("demonstrated_level")
+        for skill in skills
+    }
     best_improve = None
     best_improve_rank = None
     best_assess = None
@@ -80,6 +84,12 @@ def select_next_action(skills: list[dict]) -> dict | None:
         if importance < 0:
             raise ValueError("importance must not be negative")
         if importance == 0 or required_level <= 0:
+            continue
+
+        if not are_prerequisites_satisfied(
+            skill.get("prerequisites", []),
+            demonstrated_levels,
+        ):
             continue
 
         demonstrated_level = skill.get("demonstrated_level", None)

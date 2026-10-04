@@ -544,3 +544,89 @@ def test_prerequisite_inputs_are_not_mutated(python_level):
     are_prerequisites_satisfied(prerequisites, demonstrated_levels)
     assert prerequisites == original_prerequisites
     assert demonstrated_levels == original_levels
+
+
+@pytest.mark.parametrize("demonstrated_level, action_type", [(1, "improve"), (None, "assess")])
+def test_next_action_without_prerequisites_is_unchanged(demonstrated_level, action_type):
+    skills = [{"name": "SQL", "required_level": 2, "importance": 4,
+               "demonstrated_level": demonstrated_level, "assessable": True}]
+    expected = {"action_type": action_type, "skill_name": "SQL"}
+    assert select_next_action(skills) == expected
+    skills[0]["prerequisites"] = []
+    assert select_next_action(skills) == expected
+
+
+@pytest.mark.parametrize("demonstrated_level, action_type", [(1, "improve"), (None, "assess")])
+@pytest.mark.parametrize("python_level, allowed", [(1, True), (0, False), (None, False)])
+def test_next_action_checks_prerequisite_levels(
+    demonstrated_level, action_type, python_level, allowed
+):
+    skills = [
+        {"name": "SQL", "required_level": 2, "importance": 4,
+         "demonstrated_level": demonstrated_level, "assessable": True,
+         "prerequisites": [{"skill_name": "Python", "minimum_level": 1}]},
+        # A zero-importance skill still supplies evidence for prerequisites.
+        {"name": "Python", "required_level": 1, "importance": 0,
+         "claimed_level": 3, "demonstrated_level": python_level},
+    ]
+    expected = {"action_type": action_type, "skill_name": "SQL"} if allowed else None
+    assert select_next_action(skills) == expected
+
+
+@pytest.mark.parametrize("demonstrated_level", [1, None])
+def test_next_action_missing_prerequisite_blocks_both_buckets(demonstrated_level):
+    skills = [{"name": "SQL", "required_level": 2, "importance": 4,
+               "demonstrated_level": demonstrated_level, "assessable": True,
+               "prerequisites": [{"skill_name": "Python", "minimum_level": 1}]}]
+    assert select_next_action(skills) is None
+
+
+@pytest.mark.parametrize("demonstrated_level, action_type", [(1, "improve"), (None, "assess")])
+def test_blocked_highest_priority_skill_yields_next_eligible(demonstrated_level, action_type):
+    skills = [
+        {"name": "SQL", "required_level": 2, "importance": 100,
+         "demonstrated_level": demonstrated_level, "assessable": True,
+         "prerequisites": [{"skill_name": "Python", "minimum_level": 1}]},
+        {"name": "Statistics", "required_level": 2, "importance": 4,
+         "demonstrated_level": demonstrated_level, "assessable": True},
+    ]
+    assert select_next_action(skills) == {
+        "action_type": action_type, "skill_name": "Statistics"
+    }
+
+
+@pytest.mark.parametrize("statistics_level, allowed", [(1, True), (0, False)])
+def test_next_action_requires_all_prerequisites(statistics_level, allowed):
+    skills = [
+        {"name": "SQL", "required_level": 2, "importance": 4,
+         "assessable": True, "prerequisites": [
+             {"skill_name": "Python", "minimum_level": 1},
+             {"skill_name": "Statistics", "minimum_level": 1},
+         ]},
+        {"name": "Python", "required_level": 1, "importance": 0,
+         "demonstrated_level": 2},
+        {"name": "Statistics", "required_level": 1, "importance": 0,
+         "demonstrated_level": statistics_level},
+    ]
+    expected = {"action_type": "assess", "skill_name": "SQL"} if allowed else None
+    assert select_next_action(skills) == expected
+
+
+@pytest.mark.parametrize("demonstrated_level, action_type", [(1, "improve"), (None, "assess")])
+def test_prerequisite_integration_preserves_order_and_inputs(demonstrated_level, action_type):
+    prerequisites = [{"skill_name": "Python", "minimum_level": 1}]
+    skills = [
+        {"name": "Statistics", "required_level": 2, "importance": 4,
+         "demonstrated_level": demonstrated_level, "assessable": True,
+         "stable_priority": 2, "prerequisites": deepcopy(prerequisites)},
+        {"name": "SQL", "required_level": 2, "importance": 4,
+         "demonstrated_level": demonstrated_level, "assessable": True,
+         "stable_priority": 1, "prerequisites": deepcopy(prerequisites)},
+        {"name": "Python", "required_level": 1, "importance": 0,
+         "demonstrated_level": 1},
+    ]
+    original = deepcopy(skills)
+    expected = {"action_type": action_type, "skill_name": "SQL"}
+    assert select_next_action(skills) == expected
+    assert select_next_action(list(reversed(skills))) == expected
+    assert skills == original
