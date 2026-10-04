@@ -63,3 +63,44 @@ def calculate_confirmed_skill_gap(
 
     demonstrated_level = max(demonstrated_level, 0)
     return max(required_level - demonstrated_level, 0)
+
+
+def select_next_action(skills: list[dict]) -> dict | None:
+    """Choose a confirmed gap to improve, or an unassessed skill to assess."""
+    best_improve = None
+    best_improve_rank = None
+    best_assess = None
+    best_assess_rank = None
+
+    for skill in skills:
+        name = skill["name"]
+        required_level = skill["required_level"]
+        importance = skill["importance"]
+
+        if importance < 0:
+            raise ValueError("importance must not be negative")
+        if importance == 0 or required_level <= 0:
+            continue
+
+        demonstrated_level = skill.get("demonstrated_level", None)
+        stable_priority = skill.get("stable_priority", float("inf"))
+
+        if demonstrated_level is not None:
+            gap = calculate_confirmed_skill_gap(required_level, demonstrated_level)
+            if gap >= 1:
+                # Larger scores win; negating priority makes lower values win.
+                rank = (importance * gap, -stable_priority)
+                if best_improve_rank is None or rank > best_improve_rank:
+                    best_improve_rank = rank
+                    best_improve = {"action_type": "improve", "skill_name": name}
+        elif skill.get("assessable", False) is True:
+            claimed_level = skill.get("claimed_level", 0)
+            unverified_claim = min(max(claimed_level, 0), required_level)
+            rank = (importance, unverified_claim, -stable_priority)
+            if best_assess_rank is None or rank > best_assess_rank:
+                best_assess_rank = rank
+                best_assess = {"action_type": "assess", "skill_name": name}
+
+    if best_improve is not None:
+        return best_improve
+    return best_assess
