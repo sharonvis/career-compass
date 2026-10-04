@@ -6,6 +6,7 @@ from services.scoring_service import (
     calculate_career_readiness,
     calculate_confirmed_skill_gap,
     calculate_skill_credit,
+    classify_opportunity_match,
     select_next_action,
 )
 
@@ -350,3 +351,123 @@ def test_golden_persona_next_action():
 
     skills[0]["demonstrated_level"] = 1
     assert select_next_action(skills) == {"action_type": "improve", "skill_name": "SQL"}
+
+
+@pytest.mark.parametrize(
+    "skills",
+    [[], [{"name": "SQL", "required_level": 2, "demonstrated_level": 2}]],
+)
+def test_failed_hard_filter_returns_not_eligible(skills):
+    assert classify_opportunity_match(
+        {"degree": True, "location": False}, skills
+    ) == "not_eligible"
+
+
+@pytest.mark.parametrize(
+    "skill_values, expected",
+    [
+        ({"demonstrated_level": 2}, "strong"),
+        ({"demonstrated_level": 3}, "strong"),
+        ({"demonstrated_level": 1}, "stretch"),
+        ({"demonstrated_level": 0}, "stretch"),
+        ({"demonstrated_level": 1, "claimed_level": 3}, "stretch"),
+        ({"demonstrated_level": None, "claimed_level": 2}, "good"),
+        ({"demonstrated_level": None, "claimed_level": 1}, "stretch"),
+        ({"demonstrated_level": None}, "stretch"),
+        ({"claimed_level": 2}, "good"),
+        ({"demonstrated_level": -2}, "stretch"),
+    ],
+    ids=["meets", "exceeds", "gap", "zero", "high_claim_with_gap",
+         "unassessed_meets", "unassessed_below", "missing_claim",
+         "missing_demonstration", "negative_demonstration"],
+)
+def test_single_skill_match_band(skill_values, expected):
+    skills = [{"name": "SQL", "required_level": 2, **skill_values}]
+    assert classify_opportunity_match({}, skills) == expected
+
+
+def test_all_unassessed_claims_meet_requirements():
+    skills = [
+        {"name": "Python", "required_level": 2, "claimed_level": 2},
+        {"name": "SQL", "required_level": 2, "claimed_level": 3},
+    ]
+    assert classify_opportunity_match({"degree": True}, skills) == "good"
+
+
+def test_confirmed_gap_beats_good_unassessed_skills():
+    skills = [
+        {"name": "Python", "required_level": 2, "claimed_level": 2},
+        {"name": "SQL", "required_level": 2, "demonstrated_level": 1},
+    ]
+    assert classify_opportunity_match({}, skills) == "stretch"
+
+
+@pytest.mark.parametrize("invalid_level", [0, -1])
+def test_match_skips_invalid_required_levels(invalid_level):
+    skills = [
+        {"name": "Python", "required_level": invalid_level},
+        {"name": "SQL", "required_level": 2, "demonstrated_level": 2},
+    ]
+    assert classify_opportunity_match({}, skills) == "strong"
+
+
+@pytest.mark.parametrize(
+    "skills",
+    [[], [{"required_level": 0}, {"required_level": -1}]],
+)
+def test_match_without_valid_required_skills_raises(skills):
+    with pytest.raises(ValueError) as error:
+        classify_opportunity_match({"degree": True}, skills)
+    assert str(error.value) == "No valid required skills to classify."
+
+
+@pytest.mark.parametrize("earlier_skill", [[], [{"required_level": 2, "demonstrated_level": 0}]])
+def test_match_missing_required_level_raises(earlier_skill):
+    with pytest.raises(KeyError, match="required_level"):
+        classify_opportunity_match({}, earlier_skill + [{"name": "SQL"}])
+
+
+@pytest.mark.parametrize(
+    "sql_values, expected",
+    [
+        ({"demonstrated_level": 2}, "strong"),
+        ({"demonstrated_level": None, "claimed_level": 2}, "good"),
+        ({"demonstrated_level": 1}, "stretch"),
+    ],
+)
+def test_match_expected_examples_and_skill_order(sql_values, expected):
+    skills = [
+        {"name": "Python", "required_level": 2, "demonstrated_level": 2},
+        {"name": "SQL", "required_level": 2, **sql_values},
+    ]
+    assert classify_opportunity_match({}, skills) == expected
+    assert classify_opportunity_match({}, list(reversed(skills))) == expected
+
+
+@pytest.mark.parametrize("filters", [{}, {"degree": True}, {"degree": False}])
+def test_match_inputs_are_not_mutated(filters):
+    skills = [
+        {"name": "Python", "required_level": 0},
+        {"name": "SQL", "required_level": 2, "claimed_level": 2},
+    ]
+    original_filters = deepcopy(filters)
+    original_skills = deepcopy(skills)
+    classify_opportunity_match(filters, skills)
+    assert filters == original_filters
+    assert skills == original_skills
+
+
+@pytest.mark.parametrize(
+    "filters, skill_values",
+    [
+        ({}, {"demonstrated_level": 2}),
+        ({}, {"claimed_level": 2}),
+        ({}, {"demonstrated_level": 1}),
+        ({"degree": False}, {"demonstrated_level": 2}),
+    ],
+)
+def test_match_returns_only_allowed_bands(filters, skill_values):
+    result = classify_opportunity_match(
+        filters, [{"required_level": 2, **skill_values}]
+    )
+    assert result in {"strong", "good", "stretch", "not_eligible"}

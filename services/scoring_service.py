@@ -104,3 +104,40 @@ def select_next_action(skills: list[dict]) -> dict | None:
     if best_improve is not None:
         return best_improve
     return best_assess
+
+
+def classify_opportunity_match(
+    hard_filter_results: dict[str, bool],
+    required_skills: list[dict],
+) -> str:
+    """Classify eligibility and required skills into an opportunity match band."""
+    if any(result is False for result in hard_filter_results.values()):
+        return "not_eligible"
+
+    has_valid_skill = False
+    has_unassessed_skill = False
+    has_skill_shortfall = False
+
+    for skill in required_skills:
+        required_level = skill["required_level"]
+        if required_level <= 0:
+            continue
+
+        has_valid_skill = True
+        demonstrated_level = skill.get("demonstrated_level", None)
+        gap = calculate_confirmed_skill_gap(required_level, demonstrated_level)
+
+        if gap is None:
+            has_unassessed_skill = True
+            if skill.get("claimed_level", 0) < required_level:
+                has_skill_shortfall = True
+        elif gap > 0:
+            has_skill_shortfall = True
+
+    if not has_valid_skill:
+        raise ValueError("No valid required skills to classify.")
+    if has_skill_shortfall:
+        return "stretch"
+    if has_unassessed_skill:
+        return "good"
+    return "strong"
