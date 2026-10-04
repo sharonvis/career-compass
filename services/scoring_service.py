@@ -141,3 +141,21 @@ def classify_opportunity_match(
     if has_unassessed_skill:
         return "good"
     return "strong"
+
+
+def are_prerequisites_satisfied(
+    prerequisites: list[dict],
+    demonstrated_levels: dict[str, int | None],
+) -> bool:
+    """Check whether demonstrated levels meet every meaningful prerequisite."""
+    for prerequisite in prerequisites:
+        minimum_level = prerequisite["minimum_level"]
+        if minimum_level <= 0:
+            continue
+
+        skill_name = prerequisite["skill_name"]
+        demonstrated_level = demonstrated_levels.get(skill_name)
+        if demonstrated_level is None or demonstrated_level < minimum_level:
+            return False
+
+    return True

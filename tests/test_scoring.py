@@ -3,6 +3,7 @@ from copy import deepcopy
 import pytest
 
 from services.scoring_service import (
+    are_prerequisites_satisfied,
     calculate_career_readiness,
     calculate_confirmed_skill_gap,
     calculate_skill_credit,
@@ -471,3 +472,75 @@ def test_match_returns_only_allowed_bands(filters, skill_values):
         filters, [{"required_level": 2, **skill_values}]
     )
     assert result in {"strong", "good", "stretch", "not_eligible"}
+
+
+def test_empty_prerequisites_are_satisfied():
+    assert are_prerequisites_satisfied([], {}) is True
+
+
+@pytest.mark.parametrize(
+    "demonstrated_level, expected",
+    [(1, True), (2, True), (0, False), (None, False), (-1, False)],
+)
+def test_prerequisite_demonstrated_level(demonstrated_level, expected):
+    prerequisites = [{"skill_name": "Python", "minimum_level": 1}]
+    result = are_prerequisites_satisfied(
+        prerequisites, {"Python": demonstrated_level}
+    )
+    assert result is expected
+    assert isinstance(result, bool)
+
+
+def test_demonstrated_below_positive_minimum():
+    prerequisites = [{"skill_name": "Python", "minimum_level": 2}]
+    assert are_prerequisites_satisfied(prerequisites, {"Python": 1}) is False
+
+
+@pytest.mark.parametrize("demonstrated_levels", [{}, {"SQL": 3}])
+def test_missing_prerequisite_skill_is_not_satisfied(demonstrated_levels):
+    prerequisites = [{"skill_name": "Python", "minimum_level": 1}]
+    assert are_prerequisites_satisfied(prerequisites, demonstrated_levels) is False
+
+
+@pytest.mark.parametrize("minimum_level", [0, -1])
+def test_nonpositive_prerequisite_minimum_is_skipped(minimum_level):
+    prerequisites = [{"skill_name": "Python", "minimum_level": minimum_level}]
+    assert are_prerequisites_satisfied(prerequisites, {}) is True
+
+
+@pytest.mark.parametrize("sql_level, expected", [(1, True), (0, False)])
+def test_multiple_prerequisites_and_order(sql_level, expected):
+    prerequisites = [
+        {"skill_name": "Python", "minimum_level": 1},
+        {"skill_name": "SQL", "minimum_level": 1},
+    ]
+    demonstrated_levels = {"Python": 2, "SQL": sql_level}
+    assert are_prerequisites_satisfied(prerequisites, demonstrated_levels) is expected
+    assert are_prerequisites_satisfied(
+        list(reversed(prerequisites)), demonstrated_levels
+    ) is expected
+
+
+@pytest.mark.parametrize(
+    "prerequisite, missing_key",
+    [({"skill_name": "Python"}, "minimum_level"),
+     ({"minimum_level": 1}, "skill_name")],
+)
+def test_missing_prerequisite_keys_raise(prerequisite, missing_key):
+    with pytest.raises(KeyError) as error:
+        are_prerequisites_satisfied([prerequisite], {"Python": 2})
+    assert error.value.args == (missing_key,)
+
+
+@pytest.mark.parametrize("python_level", [None, 0, 2])
+def test_prerequisite_inputs_are_not_mutated(python_level):
+    prerequisites = [
+        {"skill_name": "SQL", "minimum_level": 0},
+        {"skill_name": "Python", "minimum_level": 1},
+    ]
+    demonstrated_levels = {"Python": python_level, "SQL": None}
+    original_prerequisites = deepcopy(prerequisites)
+    original_levels = deepcopy(demonstrated_levels)
+    are_prerequisites_satisfied(prerequisites, demonstrated_levels)
+    assert prerequisites == original_prerequisites
+    assert demonstrated_levels == original_levels
