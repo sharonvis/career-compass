@@ -34,3 +34,11 @@ SessionLocal = sessionmaker(bind=engine)
 
 class Base(DeclarativeBase):
     """Shared base for all database models."""
+
+
+def init_db():
+    """Explicitly create the data directory and registered database tables."""
+    from database import models  # Register models before creating tables.
+
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
