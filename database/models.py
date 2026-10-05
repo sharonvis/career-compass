@@ -6,8 +6,28 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
 
 from database.db import Base
+
+
+class UTCDateTime(TypeDecorator):
+    """Store UTC without an offset and restore aware UTC values on reload."""
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if value.tzinfo is not None:
+            value = value.astimezone(timezone.utc)
+        return value.replace(tzinfo=None)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value.replace(tzinfo=timezone.utc)
 
 
 def utc_now() -> datetime:
@@ -25,7 +45,7 @@ class User(Base):
     branch: Mapped[str] = mapped_column(String)
     year_of_study: Mapped[int] = mapped_column(Integer)
     target_career_id: Mapped[int | None] = mapped_column(ForeignKey("careers.id", ondelete="SET NULL"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
     target_career: Mapped[Career | None] = relationship(back_populates="target_users")
     skill_claims: Mapped[list[UserSkillClaim]] = relationship(back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
@@ -92,7 +112,7 @@ class UserSkillClaim(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
     claimed_level: Mapped[int] = mapped_column(Integer)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, onupdate=utc_now)
 
     user: Mapped[User] = relationship(back_populates="skill_claims")
     skill: Mapped[Skill] = relationship(back_populates="user_claims")
@@ -103,6 +123,10 @@ class AssessmentAttempt(Base):
     __table_args__ = (
         CheckConstraint("status IN ('in_progress', 'completed', 'abandoned')", name="ck_attempt_status"),
         CheckConstraint("resulting_level IS NULL OR resulting_level BETWEEN 0 AND 3", name="ck_attempt_resulting_level"),
+        CheckConstraint(
+            "status != 'completed' OR (resulting_level IS NOT NULL AND completed_at IS NOT NULL)",
+            name="ck_attempt_completed_consistency",
+        ),
         Index("ix_assessment_attempts_user_skill", "user_id", "skill_id"),
     )
 
@@ -113,8 +137,8 @@ class AssessmentAttempt(Base):
     status: Mapped[str] = mapped_column(String, default="in_progress")
     # Demonstrated level is derived later from the latest completed attempt.
     resulting_level: Mapped[int | None] = mapped_column(Integer)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     user: Mapped[User] = relationship(back_populates="assessment_attempts")
     skill: Mapped[Skill] = relationship(back_populates="assessment_attempts")
@@ -123,6 +147,9 @@ class AssessmentAttempt(Base):
 
 class AttemptAnswer(Base):
     __tablename__ = "attempt_answers"
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "question_reference", name="uq_attempt_question"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     attempt_id: Mapped[int] = mapped_column(ForeignKey("assessment_attempts.id", ondelete="CASCADE"), index=True)
@@ -160,7 +187,7 @@ class RoadmapCompletion(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     roadmap_item_key: Mapped[str] = mapped_column(String)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     user: Mapped[User] = relationship(back_populates="roadmap_completions")
 
@@ -211,8 +238,8 @@ class Application(Base):
     opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String, default="saved")
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, onupdate=utc_now)
 
     user: Mapped[User] = relationship(back_populates="applications")
     opportunity: Mapped[Opportunity] = relationship(back_populates="applications")
@@ -240,6 +267,6 @@ class ProgressEvent(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     event_type: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
     user: Mapped[User] = relationship(back_populates="progress_events")
