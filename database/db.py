@@ -1,6 +1,7 @@
 """Database connection and session setup; importing this module creates no tables."""
 
 from pathlib import Path
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -42,3 +43,17 @@ def init_db():
 
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+
+
+@contextmanager
+def session_scope():
+    """Commit one successful action, roll back failures, and always close."""
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except BaseException:
+        session.rollback()
+        raise
+    finally:
+        session.close()

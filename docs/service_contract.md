@@ -1,0 +1,70 @@
+# Career Compass service contract
+
+## Person 1: UI
+
+Use services; do not query `database.models`, write SQLAlchemy queries, calculate
+readiness/gaps/bands, reorder roadmaps, or edit assessment attempts in UI code.
+
+| Screen | Service calls |
+| --- | --- |
+| Onboarding / Profile | `create_user`, `get_user_by_email`, `get_user_profile`, `list_careers`, `set_target_career`, `set_skill_claim` |
+| Dashboard | `get_user_profile`, `get_user_career_summary`, `get_user_roadmap`, `get_ranked_opportunities`, `get_application_status_counts` |
+| My Career | `get_user_career_summary`, `list_careers`, `set_target_career` |
+| Roadmap | `get_user_roadmap`, `mark_roadmap_item_completed`, `mark_roadmap_item_incomplete` |
+| Opportunities | `get_ranked_opportunities`, `get_opportunity_match`, `save_opportunity` |
+| Applications | `list_user_applications`, `update_application_status`, `update_application_notes`, `remove_saved_application` |
+
+For one write action, use `with session_scope() as session:` and call the write
+service. It commits on success, rolls back and re-raises on failure, and always
+closes. For reads, open a normal session, call the service, and close it.
+Services never commit internally. Never store sessions or ORM objects in
+Streamlit session state; store simple values such as `user_id`. Refresh affected
+views after writes; do not keep stale cached summaries.
+
+Use `services.errors` for the existing public exceptions. Missing catalog skills
+in `set_skill_claim` raise `LookupError`; invalid input raises `ValueError`.
+This profile foundation is not authentication.
+
+## Person 2: backend services
+
+Owns scoring, career summaries, roadmap ordering, opportunity matching, profiles,
+and application tracking. Readiness, gaps, next actions, and match bands are
+computed, never stored. Manual roadmap completion is not demonstrated skill.
+Career switching changes only the target and preserves user history. The
+`ASSESSABLE_SKILL_NAMES` constant remains owned by Person 2; SQL and Statistics
+are currently assessment-backed. New assessment-backed skills require deliberate
+constant and test updates. Prerequisites outside valid career requirements remain
+unsupported by the current career summary API.
+
+## Person 3: assessments
+
+Owns creation and grading. A completed `AssessmentAttempt` contains `user_id`,
+`skill_id`, `form_name`, status `completed`, integer `resulting_level` 0–3,
+`started_at`, and aware UTC `completed_at` representing actual completion time.
+Link `AttemptAnswer` rows using the current model. Flush/commit one assessment
+and its answers together. Never edit or delete earlier completed attempts;
+retakes create new attempts. Latest `completed_at` wins even when the new level
+is lower; ID breaks completion-time ties.
+
+Do not calculate/store readiness, gaps, or next actions, or modify roadmap
+completions or applications. Reading `get_user_career_summary` for feedback is
+allowed. The Python attempt in integration tests is demo evidence, not permission
+to make Python assessable in the v1 UI.
+
+## Person 4: opportunities
+
+Owns SerpAPI calls, normalization, deduplication, and writes to `Opportunity` and
+`OpportunitySkill`. Do not calculate match bands, rank by student state, calculate
+readiness, or modify applications.
+
+Live rows need non-empty title/company, nullable location, an agreed type such
+as `internship`/`entry_level`, a non-`seed` source, source URL, date-or-None deadline,
+and `is_seeded=False`. Skills must reference the catalog, use levels 1–3, and
+boolean `is_required`. Listings without mapped required skills may be stored
+but stay out of rankings. Suggested deduplication key:
+`(source, title, company, location)`; ingestion owns enforcement.
+
+Never delete opportunities referenced by applications; the foreign key raises
+`IntegrityError`. Expired or stale rows may remain stored. Existing SQLite files
+created before the RESTRICT change need migration/recreation; `create_all` does
+not alter existing foreign keys.
