@@ -6,6 +6,7 @@ from services.scoring_service import (
     calculate_assessment_coverage,
     list_confirmed_gaps,
     rank_next_actions,
+    classify_required_skill_statuses,
     are_prerequisites_satisfied,
     calculate_career_readiness,
     calculate_confirmed_skill_gap,
@@ -13,6 +14,34 @@ from services.scoring_service import (
     classify_opportunity_match,
     select_next_action,
 )
+
+
+@pytest.mark.parametrize("claimed,demonstrated,status,band", [
+    (0, 2, "met", "strong"), (3, 1, "gap", "stretch"), (3, 0, "gap", "stretch"),
+    (2, None, "unverified_ok", "good"), (1, None, "unverified_low", "stretch"),
+])
+def test_required_skill_statuses_and_bands_agree(claimed, demonstrated, status, band):
+    skills = [dict(name="SQL", required_level=2, claimed_level=claimed, demonstrated_level=demonstrated)]
+    original = deepcopy(skills)
+    assert classify_required_skill_statuses(skills) == [dict(
+        skill_name="SQL", required_level=2, claimed_level=claimed,
+        demonstrated_level=demonstrated, status=status)]
+    assert classify_opportunity_match({}, skills) == band
+    assert skills == original
+
+
+def test_required_statuses_skip_invalid_and_optional_and_default_claims():
+    skills = [dict(skill_name="SQL", required_level=2),
+              dict(name="Zero", required_level=0), dict(name="Negative", required_level=-1),
+              dict(name="Optional", required_level=3, is_required=False)]
+    assert classify_required_skill_statuses(skills) == [dict(
+        skill_name="SQL", required_level=2, claimed_level=0, demonstrated_level=None, status="unverified_low")]
+    assert classify_required_skill_statuses([]) == []
+
+
+def test_opportunity_band_ignores_explicit_optional_skills():
+    assert classify_opportunity_match({}, [dict(name="SQL", required_level=2, demonstrated_level=2),
+                                          dict(name="Git", required_level=3, demonstrated_level=0, is_required=False)]) == "strong"
 
 
 def test_ranked_improvements_keep_assessments_out_and_respect_prerequisites():

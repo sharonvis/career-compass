@@ -311,3 +311,32 @@ def test_no_streamlit_dependency():
             assert all(alias.name.split(".")[0] != "streamlit" for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             assert (node.module or "").split(".")[0] != "streamlit"
+
+
+def test_public_skill_states_outside_career_and_missing_claim(session, catalog):
+    excel = catalog["skills"]["Excel"]
+    older = attempt(session, catalog, "Excel", 3, 0)
+    latest = attempt(session, catalog, "Excel", 1, 1)
+    attempt(session, catalog, "Excel", 3, 2, status="abandoned")
+    states = service.get_user_skill_states(session, catalog["user"].id, [excel.id, excel.id, 99999])
+    assert states == {excel.id: dict(skill_id=excel.id, name="Excel", claimed_level=0,
+                                    demonstrated_level=1, latest_attempt_id=latest.id)}
+    assert latest.id != older.id
+    assert service.get_user_skill_states(session, catalog["user"].id, []) == {}
+    with pytest.raises(service.UserNotFoundError):
+        service.get_user_skill_states(session, 99999, [])
+
+
+def test_public_skill_states_tie_zero_and_no_autoflush(session, catalog, monkeypatch):
+    sql = catalog["skills"]["SQL"]
+    attempt(session, catalog, "SQL", 3, 0)
+    latest = attempt(session, catalog, "SQL", 0, 0)
+    user_id, sql_id, latest_id = catalog["user"].id, sql.id, latest.id
+    catalog["user"].name = "Pending"
+    with monkeypatch.context() as context:
+        for method in ["flush", "commit", "add"]:
+            context.setattr(session, method, Mock(side_effect=AssertionError(method)))
+        states = service.get_user_skill_states(session, user_id, [sql_id])
+    assert states[sql_id]["demonstrated_level"] == 0
+    assert states[sql_id]["latest_attempt_id"] == latest_id
+    session.rollback()

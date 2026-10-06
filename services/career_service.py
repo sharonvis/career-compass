@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from database.models import (
-    AssessmentAttempt, Career, CareerSkillRequirement, SkillPrerequisite,
+    AssessmentAttempt, Career, CareerSkillRequirement, Skill, SkillPrerequisite,
     User, UserSkillClaim,
 )
 from services.scoring_service import (
@@ -52,6 +52,34 @@ def get_latest_demonstrated_level(
         )
 
 
+def get_user_skill_states(session: Session, user_id: int, skill_ids: list[int]) -> dict[int, dict]:
+    """Read claims and latest completed evidence for requested catalog skills.
+
+    Unknown skill IDs are omitted; duplicate requested IDs produce one entry.
+    """
+    with session.no_autoflush:
+        if session.get(User, user_id) is None:
+            raise UserNotFoundError(f"User {user_id} was not found")
+        skills = list(session.scalars(select(Skill).where(Skill.id.in_(skill_ids)).order_by(Skill.id)))
+        claims = dict(session.execute(
+            select(UserSkillClaim.skill_id, UserSkillClaim.claimed_level)
+            .where(UserSkillClaim.user_id == user_id, UserSkillClaim.skill_id.in_(skill_ids))
+        ).all())
+        states = {skill.id: dict(skill_id=skill.id, name=skill.name,
+                                 claimed_level=claims.get(skill.id, 0),
+                                 demonstrated_level=None, latest_attempt_id=None) for skill in skills}
+        for skill_id, level, attempt_id in session.execute(
+            select(AssessmentAttempt.skill_id, AssessmentAttempt.resulting_level, AssessmentAttempt.id)
+            .where(AssessmentAttempt.user_id == user_id, AssessmentAttempt.skill_id.in_(skill_ids),
+                   AssessmentAttempt.status == "completed")
+            .order_by(AssessmentAttempt.completed_at.desc(), AssessmentAttempt.id.desc())
+        ):
+            if skill_id in states and states[skill_id]["latest_attempt_id"] is None:
+                states[skill_id]["demonstrated_level"] = level
+                states[skill_id]["latest_attempt_id"] = attempt_id
+        return states
+
+
 def build_career_skill_state(
     session: Session, user_id: int, career_id: int,
 ) -> list[dict]:
@@ -74,22 +102,7 @@ def build_career_skill_state(
             raise ValueError(f"Career {career_id} has no valid skill requirements")
 
         skill_ids = [requirement.skill_id for requirement in requirements]
-        claims = dict(session.execute(
-            select(UserSkillClaim.skill_id, UserSkillClaim.claimed_level)
-            .where(UserSkillClaim.user_id == user_id, UserSkillClaim.skill_id.in_(skill_ids))
-        ).all())
-        demonstrated = {}
-        latest_attempt_ids = {}
-        attempts = session.execute(
-            select(AssessmentAttempt.skill_id, AssessmentAttempt.resulting_level, AssessmentAttempt.id)
-            .where(AssessmentAttempt.user_id == user_id,
-                   AssessmentAttempt.skill_id.in_(skill_ids),
-                   AssessmentAttempt.status == "completed")
-            .order_by(AssessmentAttempt.completed_at.desc(), AssessmentAttempt.id.desc())
-        )
-        for skill_id, level, attempt_id in attempts:
-            demonstrated.setdefault(skill_id, level)
-            latest_attempt_ids.setdefault(skill_id, attempt_id)
+        user_states = get_user_skill_states(session, user_id, skill_ids)
 
         prerequisites = {skill_id: [] for skill_id in skill_ids}
         for prerequisite in session.scalars(
@@ -113,9 +126,9 @@ def build_career_skill_state(
             "name": requirement.skill.name,
             "required_level": requirement.required_level,
             "importance": requirement.importance,
-            "claimed_level": claims.get(requirement.skill_id, 0),
-            "demonstrated_level": demonstrated.get(requirement.skill_id),
-            "latest_attempt_id": latest_attempt_ids.get(requirement.skill_id),
+            "claimed_level": user_states[requirement.skill_id]["claimed_level"],
+            "demonstrated_level": user_states[requirement.skill_id]["demonstrated_level"],
+            "latest_attempt_id": user_states[requirement.skill_id]["latest_attempt_id"],
             "assessable": requirement.skill.name in ASSESSABLE_SKILL_NAMES,
             "stable_priority": STABLE_PRIORITY.get(requirement.skill.name, float("inf")),
             "prerequisites": prerequisites[requirement.skill_id],

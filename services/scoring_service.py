@@ -158,6 +158,30 @@ def select_next_action(skills: list[dict]) -> dict | None:
     return actions[0] if actions else None
 
 
+def classify_required_skill_statuses(required_skills: list[dict]) -> list[dict]:
+    """Describe required skills using demonstrated evidence before claims."""
+    statuses = []
+    for skill in required_skills:
+        required_level = skill["required_level"]
+        if required_level <= 0 or skill.get("is_required", True) is False:
+            continue
+        claimed_level = skill.get("claimed_level", 0)
+        demonstrated_level = skill.get("demonstrated_level")
+        if demonstrated_level is not None:
+            gap = calculate_confirmed_skill_gap(required_level, demonstrated_level)
+            status = "gap" if gap > 0 else "met"
+        else:
+            status = "unverified_ok" if claimed_level >= required_level else "unverified_low"
+        statuses.append({
+            "skill_name": skill.get("skill_name", skill.get("name")),
+            "required_level": required_level,
+            "claimed_level": claimed_level,
+            "demonstrated_level": demonstrated_level,
+            "status": status,
+        })
+    return statuses
+
+
 def classify_opportunity_match(
     hard_filter_results: dict[str, bool],
     required_skills: list[dict],
@@ -166,31 +190,12 @@ def classify_opportunity_match(
     if any(result is False for result in hard_filter_results.values()):
         return "not_eligible"
 
-    has_valid_skill = False
-    has_unassessed_skill = False
-    has_skill_shortfall = False
-
-    for skill in required_skills:
-        required_level = skill["required_level"]
-        if required_level <= 0:
-            continue
-
-        has_valid_skill = True
-        demonstrated_level = skill.get("demonstrated_level", None)
-        gap = calculate_confirmed_skill_gap(required_level, demonstrated_level)
-
-        if gap is None:
-            has_unassessed_skill = True
-            if skill.get("claimed_level", 0) < required_level:
-                has_skill_shortfall = True
-        elif gap > 0:
-            has_skill_shortfall = True
-
-    if not has_valid_skill:
+    statuses = classify_required_skill_statuses(required_skills)
+    if not statuses:
         raise ValueError("No valid required skills to classify.")
-    if has_skill_shortfall:
+    if any(skill["status"] in {"gap", "unverified_low"} for skill in statuses):
         return "stretch"
-    if has_unassessed_skill:
+    if any(skill["status"] == "unverified_ok" for skill in statuses):
         return "good"
     return "strong"
 
