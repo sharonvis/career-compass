@@ -54,6 +54,39 @@ def test_start_assessment():
         session.close()
 
 
+def test_starting_same_skill_twice_creates_separate_attempts():
+    init_db()
+
+    session = SessionLocal()
+    seed_database(session)
+
+    try:
+        user = create_test_user(session)
+
+        first_attempt = start_assessment(
+            session=session,
+            user_id=user.id,
+            skill_name="SQL",
+            form_name="A",
+        )
+        second_attempt = start_assessment(
+            session=session,
+            user_id=user.id,
+            skill_name="SQL",
+            form_name="B",
+        )
+
+        assert first_attempt["attempt_id"] != second_attempt["attempt_id"]
+        assert session.query(AssessmentAttempt).filter(
+            AssessmentAttempt.user_id == user.id,
+            AssessmentAttempt.skill_id == first_attempt["skill_id"],
+        ).count() == 2
+
+    finally:
+        session.rollback()
+        session.close()
+
+
 def test_record_answer():
     init_db()
 
@@ -142,6 +175,60 @@ def test_complete_assessment_creates_progress_event():
 
         assert event is not None
         assert event.description == "Completed SQL assessment."
+
+    finally:
+        session.rollback()
+        session.close()
+
+
+def test_complete_statistics_assessment_stores_resulting_level(monkeypatch):
+    init_db()
+
+    session = SessionLocal()
+    seed_database(session)
+
+    try:
+        user = create_test_user(session)
+        attempt = start_assessment(
+            session=session,
+            user_id=user.id,
+            skill_name="Statistics",
+            form_name="A",
+        )
+        question_results = [
+            {
+                "question_id": f"STAT-A-{index:03}",
+                "topic": "Beginner topic",
+                "difficulty": "Beginner",
+                "correct": index < 4,
+            }
+            for index in range(1, 5)
+        ] + [
+            {
+                "question_id": f"STAT-A-{index:03}",
+                "topic": "Intermediate topic",
+                "difficulty": "Intermediate",
+                "correct": index < 8,
+            }
+            for index in range(5, 9)
+        ]
+
+        def unexpected_sql_scorer(_):
+            raise AssertionError("Statistics assessments must use the Statistics scorer")
+
+        monkeypatch.setattr(
+            "services.assessment_service.calculate_sql_level",
+            unexpected_sql_scorer,
+        )
+        result = complete_assessment(
+            session=session,
+            attempt_id=attempt["attempt_id"],
+            question_results=question_results,
+        )
+
+        assert result["estimated_level"] == "Intermediate"
+        assert result["resulting_level"] == 2
+        assert session.get(AssessmentAttempt, attempt["attempt_id"]).resulting_level == 2
 
     finally:
         session.rollback()

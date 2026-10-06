@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from database.models import AssessmentAttempt, AttemptAnswer, Skill, User
 from services.progress_service import record_progress_event
 from services.sql_assessment import calculate_sql_level
+from services.statistics_assessment import calculate_statistics_level
 
 
 LEVEL_TO_INT = {
@@ -155,9 +156,12 @@ def complete_assessment(
     if not question_results:
         raise ValueError("question_results cannot be empty")
 
-    # Calculate the estimated level using the existing
-    # Person 3 SQL assessment scoring logic.
-    estimated_level = calculate_sql_level(question_results)
+    if attempt.skill.name == "SQL":
+        estimated_level = calculate_sql_level(question_results)
+    elif attempt.skill.name == "Statistics":
+        estimated_level = calculate_statistics_level(question_results)
+    else:
+        raise ValueError(f"Unsupported assessment skill '{attempt.skill.name}'")
 
     resulting_level = LEVEL_TO_INT[estimated_level]
 
@@ -189,25 +193,6 @@ def complete_assessment(
         "estimated_level": estimated_level,
         "completed_at": attempt.completed_at,
     }
-    def get_attempt(session: Session, attempt_id: int) -> dict:
-        """Return one assessment attempt."""
-    attempt = session.get(AssessmentAttempt, attempt_id)
-
-    if attempt is None:
-        raise ValueError(f"Assessment attempt {attempt_id} was not found")
-
-    return {
-        "attempt_id": attempt.id,
-        "user_id": attempt.user_id,
-        "skill_id": attempt.skill_id,
-        "skill_name": attempt.skill.name,
-        "form_name": attempt.form_name,
-        "status": attempt.status,
-        "resulting_level": attempt.resulting_level,
-        "started_at": attempt.started_at,
-        "completed_at": attempt.completed_at,
-    }
-
 def get_attempt(session: Session, attempt_id: int) -> dict:
     """Return one assessment attempt."""
     attempt = session.get(AssessmentAttempt, attempt_id)
