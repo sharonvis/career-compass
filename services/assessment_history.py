@@ -223,3 +223,43 @@ class AssessmentHistory:
         )
 
         return history
+    # ========================================================
+    # GET NEXT FORM
+    # ========================================================
+
+    def get_next_form(self, user_id, skill):
+        """
+        Determine which assessment form should be used next.
+
+        First attempt:
+            Form A
+
+        Second attempt:
+            Form B
+
+        Third attempt:
+            Form A
+
+        Fourth attempt:
+            Form B
+        """
+
+        user_attempts = [
+            attempt
+            for attempt in self.attempts.values()
+            if (
+                attempt["user_id"] == user_id
+                and attempt["skill"] == skill
+            )
+        ]
+
+        # First attempt
+        if len(user_attempts) == 0:
+            return "A"
+
+        # Even number of previous attempts → B
+        if len(user_attempts) % 2 == 1:
+            return "B"
+
+        # Odd number of previous attempts → A
+        return "A"
