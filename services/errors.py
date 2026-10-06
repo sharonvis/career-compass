@@ -6,7 +6,16 @@ from services.application_service import (
     ApplicationNotFoundError, InvalidApplicationStatusError, ApplicationNotRemovableError,
 )
 
+class SkillNotFoundError(LookupError):
+    """The requested catalog skill does not exist."""
+
+
+class EvidenceNotFoundError(LookupError):
+    """No evidence is available to this user for the requested ID."""
+
+
 __all__ = [
     "UserNotFoundError", "CareerNotFoundError", "OpportunityNotFoundError",
     "ApplicationNotFoundError", "InvalidApplicationStatusError", "ApplicationNotRemovableError",
+    "SkillNotFoundError", "EvidenceNotFoundError",
 ]

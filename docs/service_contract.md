@@ -22,8 +22,17 @@ Streamlit session state; store simple values such as `user_id`. Refresh affected
 views after writes; do not keep stale cached summaries.
 
 Use `services.errors` for the existing public exceptions. Missing catalog skills
-in `set_skill_claim` raise `LookupError`; invalid input raises `ValueError`.
+in `set_skill_claim` raise `SkillNotFoundError`; invalid input raises `ValueError`.
 This profile foundation is not authentication.
+
+### Supporting evidence
+
+Person 1 may call `add_evidence`, `get_evidence`, `list_user_evidence`,
+`update_evidence`, and `delete_evidence`. Label this **Supporting evidence**,
+never **Verified skill**. Evidence is metadata only: do not include it in
+scoring, readiness, assessment coverage, gaps, next actions, roadmap ordering,
+opportunity bands, or application counts. URLs are parsed but never fetched;
+certificates and issuers are not verified. Write services never commit.
 
 ## Person 2: backend services
 

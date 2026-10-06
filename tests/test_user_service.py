@@ -191,7 +191,7 @@ def test_invalid_claim_levels_rejected(session, level):
 
 def test_unknown_skill(session):
     user_id = create(session)["user_id"]
-    with pytest.raises(LookupError, match="Skill 99999 was not found"):
+    with pytest.raises(errors.SkillNotFoundError, match="Skill 99999 was not found"):
         service.set_skill_claim(session, user_id, 99999, 1)
 
 

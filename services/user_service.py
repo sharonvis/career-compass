@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from database.models import Career, Skill, User, UserSkillClaim
 from services.career_service import CareerNotFoundError, UserNotFoundError
+from services.errors import SkillNotFoundError
 
 
 def _normalize_email(email):
@@ -90,7 +91,7 @@ def set_skill_claim(session: Session, user_id: int, skill_id: int, claimed_level
         _get_user(session, user_id)
         skill = session.get(Skill, skill_id)
         if skill is None:
-            raise LookupError(f"Skill {skill_id} was not found")
+            raise SkillNotFoundError(f"Skill {skill_id} was not found")
         claim = session.scalar(select(UserSkillClaim).where(
             UserSkillClaim.user_id == user_id, UserSkillClaim.skill_id == skill_id))
         if claim is None:
