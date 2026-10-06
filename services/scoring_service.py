@@ -1,6 +1,48 @@
 UNASSESSED_CREDIT_FACTOR = 0.5
 
 
+def calculate_assessment_coverage(skills: list[dict]) -> float:
+    """Return the importance-weighted fraction of valid skills assessed."""
+    assessed_importance = 0
+    total_importance = 0
+    for skill in skills:
+        importance = skill["importance"]
+        if importance < 0:
+            raise ValueError("importance must not be negative")
+        if skill["required_level"] <= 0 or importance == 0:
+            continue
+        total_importance += importance
+        if skill.get("demonstrated_level") is not None:
+            assessed_importance += importance
+    if total_importance == 0:
+        raise ValueError("at least one valid skill is required")
+    return assessed_importance / total_importance
+
+
+def list_confirmed_gaps(skills: list[dict]) -> list[dict]:
+    """List assessed positive gaps, ordered by weighted gap and priority."""
+    gaps = []
+    for skill in skills:
+        importance = skill["importance"]
+        if importance < 0:
+            raise ValueError("importance must not be negative")
+        if skill["required_level"] <= 0 or importance == 0:
+            continue
+        demonstrated_level = skill.get("demonstrated_level")
+        gap = calculate_confirmed_skill_gap(skill["required_level"], demonstrated_level)
+        if gap is not None and gap > 0:
+            result = {
+                "skill_name": skill["name"],
+                "required_level": skill["required_level"],
+                "demonstrated_level": demonstrated_level,
+                "gap": gap,
+                "importance": importance,
+            }
+            gaps.append((result, skill.get("stable_priority", float("inf"))))
+    gaps.sort(key=lambda item: (-item[0]["importance"] * item[0]["gap"], item[1]))
+    return [result for result, priority in gaps]
+
+
 def calculate_skill_credit(
     required_level: int,
     claimed_level: int = 0,

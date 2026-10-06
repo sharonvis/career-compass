@@ -3,6 +3,8 @@ from copy import deepcopy
 import pytest
 
 from services.scoring_service import (
+    calculate_assessment_coverage,
+    list_confirmed_gaps,
     are_prerequisites_satisfied,
     calculate_career_readiness,
     calculate_confirmed_skill_gap,
@@ -10,6 +12,71 @@ from services.scoring_service import (
     classify_opportunity_match,
     select_next_action,
 )
+
+
+@pytest.mark.parametrize("levels,expected", [
+    ([None, None], 0.0), ([0, None], 0.25), ([None, 2], 0.75), ([0, 2], 1.0),
+])
+def test_assessment_coverage_is_weighted_and_zero_is_assessed(levels, expected):
+    skills = [dict(required_level=2, importance=weight, demonstrated_level=level)
+              for weight, level in zip([1, 3], levels)]
+    assert calculate_assessment_coverage(skills) == expected
+
+
+@pytest.mark.parametrize("helper", [calculate_assessment_coverage, list_confirmed_gaps])
+def test_new_helpers_skip_invalid_rows_without_mutation(helper):
+    skills = [dict(name="Valid", required_level=2, importance=3, demonstrated_level=1),
+              dict(name="Zero weight", required_level=2, importance=0, demonstrated_level=0),
+              dict(name="Zero level", required_level=0, importance=100, demonstrated_level=0),
+              dict(name="Negative level", required_level=-1, importance=100, demonstrated_level=0)]
+    original = deepcopy(skills)
+    result = helper(skills)
+    if helper is calculate_assessment_coverage:
+        assert result == 1.0
+    else:
+        assert [gap["skill_name"] for gap in result] == ["Valid"]
+    assert skills == original
+
+
+@pytest.mark.parametrize("helper", [calculate_assessment_coverage, list_confirmed_gaps])
+@pytest.mark.parametrize("required_level", [0, 2])
+def test_new_helpers_reject_negative_importance(helper, required_level):
+    with pytest.raises(ValueError, match="importance must not be negative"):
+        helper([dict(required_level=required_level, importance=-1)])
+
+
+@pytest.mark.parametrize("skills", [[], [dict(required_level=0, importance=2)],
+                                   [dict(required_level=2, importance=0)]])
+def test_coverage_requires_valid_skills(skills):
+    with pytest.raises(ValueError, match="at least one valid skill"):
+        calculate_assessment_coverage(skills)
+
+
+def test_confirmed_gaps_filter_sort_and_return_exact_fields():
+    skills = [
+        dict(name="Later", required_level=2, demonstrated_level=1, importance=4, stable_priority=3),
+        dict(name="Earlier", required_level=2, demonstrated_level=1, importance=4, stable_priority=2),
+        dict(name="Largest", required_level=3, demonstrated_level=0, importance=2, stable_priority=9),
+        dict(name="Unassessed", required_level=2, importance=5),
+        dict(name="Met", required_level=2, demonstrated_level=3, importance=5),
+        dict(name="No priority", required_level=2, demonstrated_level=1, importance=4),
+    ]
+    original = deepcopy(skills)
+    assert list_confirmed_gaps(skills) == [
+        dict(skill_name="Largest", required_level=3, demonstrated_level=0, gap=3, importance=2),
+        dict(skill_name="Earlier", required_level=2, demonstrated_level=1, gap=1, importance=4),
+        dict(skill_name="Later", required_level=2, demonstrated_level=1, gap=1, importance=4),
+        dict(skill_name="No priority", required_level=2, demonstrated_level=1, gap=1, importance=4),
+    ]
+    assert skills == original
+    assert list_confirmed_gaps([]) == []
+
+
+def test_assessment_coverage_does_not_round():
+    assert calculate_assessment_coverage([
+        dict(required_level=1, importance=1, demonstrated_level=0),
+        dict(required_level=1, importance=2, demonstrated_level=None),
+    ]) == 1 / 3
 
 
 @pytest.mark.parametrize("required_level", [0, -1])
