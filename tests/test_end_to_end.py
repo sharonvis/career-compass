@@ -15,6 +15,8 @@ from services.career_service import get_user_career_summary, get_latest_demonstr
 from services.roadmap_service import get_user_roadmap, mark_roadmap_item_completed
 from services.opportunity_service import get_opportunity_match, get_ranked_opportunities
 from services.application_service import save_opportunity, update_application_status, update_application_notes, get_application
+from services.progress_service import record_progress_event, list_recent_progress_events
+from services.application_service import get_application_status_counts
 
 
 STAMP = datetime(2025, 1, 1, tzinfo=timezone.utc)
@@ -37,7 +39,7 @@ def session_factory(tmp_path):
         engine.dispose()
 
 
-def write_attempt(factory, user_id, skill_id, level, day, form_name):
+def write_attempt(factory, user_id, skill_id, level, day, form_name, *, event_subject=None):
     """Person 3 fixture: one attempt and its answers commit in one transaction."""
     with factory.begin() as session:
         completed_at = STAMP + timedelta(days=day)
@@ -48,7 +50,16 @@ def write_attempt(factory, user_id, skill_id, level, day, form_name):
                                                            submitted_answer="fixture", is_correct=True)])
         session.add(row)
         session.flush()
+        if event_subject is not None:
+            record_progress_event(session, user_id, "assessment_completed", event_subject)
         return row.id
+
+
+def select_target_and_record(session, user_id, career_id):
+    result = set_target_career(session, user_id, career_id)
+    if result["changed"]:
+        record_progress_event(session, user_id, "target_career_changed", result["career_name"])
+    return result
 
 
 def persisted_state(session):
@@ -80,7 +91,7 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
         opportunity_id = session.scalar(select(m.Opportunity.id).where(m.Opportunity.title == "Data Engineering Intern"))
     ai_id, analyst_id = careers["AI/ML Engineer"], careers["Data Analyst"]
     with factory.begin() as session:
-        set_target_career(session, user_id, ai_id)
+        select_target_and_record(session, user_id, ai_id)
     claims = {"Python": 2, "SQL": 3, "Statistics": 1, "Machine Learning Fundamentals": 1,
               "Pandas/Data Handling": 2, "Git": 1}
     for name, level in claims.items():
@@ -101,7 +112,7 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
         assert get_opportunity_match(session, user_id, ai_id, opportunity_id, today=TODAY)["match_band"] == "good"
 
     # Person 3 Form A and subsequent reads.
-    form_a_id = write_attempt(factory, user_id, skills["SQL"], 1, 1, "SQL Form A")
+    form_a_id = write_attempt(factory, user_id, skills["SQL"], 1, 1, "SQL Form A", event_subject="SQL")
     with factory() as session:
         form_a = get_user_career_summary(session, user_id, ai_id)
         assert form_a["claimed_readiness"] == 0.8125
@@ -115,13 +126,14 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
         assert get_opportunity_match(session, user_id, ai_id, opportunity_id, today=TODAY)["match_band"] == "stretch"
     with factory.begin() as session:
         mark_roadmap_item_completed(session, user_id, improve_key)
+        record_progress_event(session, user_id, "roadmap_item_completed", "Improve SQL")
     with factory() as session:
         assert current(get_user_roadmap(session, user_id, ai_id))["title"] == "Reassess SQL"
         assert get_latest_demonstrated_level(session, user_id, skills["SQL"]) == 1
         assert get_user_career_summary(session, user_id, ai_id) == form_a
 
     # Form B changes demonstrated evidence, not the user's claim.
-    form_b_id = write_attempt(factory, user_id, skills["SQL"], 2, 2, "SQL Form B")
+    form_b_id = write_attempt(factory, user_id, skills["SQL"], 2, 2, "SQL Form B", event_subject="SQL")
     with factory() as session:
         post_form_b = get_user_career_summary(session, user_id, ai_id)
         assert post_form_b["effective_readiness"] == pytest.approx(14.25 / 24)
@@ -140,10 +152,12 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
     with factory.begin() as session:
         application = save_opportunity(session, user_id, opportunity_id, today=TODAY)
         application_id = application["application_id"]
+        record_progress_event(session, user_id, "opportunity_saved", "Data Engineering Intern")
     for status in ["applied", "interview", "offer"]:
         with factory.begin() as session:
             tracked = update_application_status(session, user_id, application_id, status, today=TODAY)
             assert tracked["application_id"] == application_id and tracked["status"] == status
+            record_progress_event(session, user_id, "application_status_changed", "Data Engineering Intern", status.capitalize())
         with factory() as session:
             assert session.scalar(select(func.count()).select_from(m.Application)) == 1
             assert persisted_state(session) == stable_state
@@ -164,7 +178,7 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
 
     # Career switching changes only the target selection.
     with factory.begin() as session:
-        set_target_career(session, user_id, analyst_id)
+        select_target_and_record(session, user_id, analyst_id)
     with factory() as session:
         assert get_user_profile(session, user_id)["target_career_id"] == analyst_id
         assert persisted_state(session) == stable_state
@@ -182,7 +196,7 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
         }
         assert next(o for o in visible if o["opportunity_id"] == opportunity_id)["match_band"] == "strong"
     with factory.begin() as session:
-        set_target_career(session, user_id, ai_id)
+        select_target_and_record(session, user_id, ai_id)
     with factory() as session:
         assert get_user_career_summary(session, user_id, ai_id) == post_form_b
         assert persisted_state(session) == stable_state
@@ -206,16 +220,49 @@ def test_full_golden_backend_flow_across_sessions(session_factory):
         session.flush()
         empty_id = empty.id
     with factory.begin() as session:
-        assert set_target_career(session, user_id, empty_id)["changed"] is True
+        assert select_target_and_record(session, user_id, empty_id)["changed"] is True
     with factory() as session:
         assert get_user_profile(session, user_id)["target_career_id"] == empty_id
         with pytest.raises(ValueError, match="no valid skill requirements"):
             get_user_career_summary(session, user_id, empty_id)
     with factory.begin() as session:
-        set_target_career(session, user_id, ai_id)
+        select_target_and_record(session, user_id, ai_id)
     with factory() as session:
         assert get_user_career_summary(session, user_id, ai_id) == post_form_b
         assert persisted_state(session) == stable_state
+
+    # Explicit no-op actions produce no duplicate activity. Reading activity is neutral.
+    with factory() as session:
+        final_outputs = (
+            get_user_career_summary(session, user_id, ai_id), get_user_roadmap(session, user_id, ai_id),
+            get_opportunity_match(session, user_id, ai_id, opportunity_id, today=TODAY),
+            get_application_status_counts(session, user_id),
+        )
+        event_count = session.scalar(select(func.count()).select_from(m.ProgressEvent))
+    with factory.begin() as session:
+        assert select_target_and_record(session, user_id, ai_id)["changed"] is False
+        assert save_opportunity(session, user_id, opportunity_id, today=TODAY)["application_id"] == application_id
+        assert update_application_status(session, user_id, application_id, "offer")["status"] == "offer"
+    with factory() as session:
+        events = list_recent_progress_events(session, user_id, limit=50)
+        assert len(events) == event_count == 12
+        assert [(e["created_at"], e["event_id"]) for e in events] == sorted(
+            [(e["created_at"], e["event_id"]) for e in events], reverse=True)
+        assert [e["description"] for e in events] == list(reversed([
+            "Target career changed to AI/ML Engineer.", "Completed SQL assessment.",
+            "Completed roadmap step: Improve SQL.", "Completed SQL assessment.",
+            "Saved Data Engineering Intern.", "Application for Data Engineering Intern moved to Applied.",
+            "Application for Data Engineering Intern moved to Interview.", "Application for Data Engineering Intern moved to Offer.",
+            "Target career changed to Data Analyst.", "Target career changed to AI/ML Engineer.",
+            "Target career changed to Empty requirements.", "Target career changed to AI/ML Engineer.",
+        ]))
+        assert (
+            get_user_career_summary(session, user_id, ai_id), get_user_roadmap(session, user_id, ai_id),
+            get_opportunity_match(session, user_id, ai_id, opportunity_id, today=TODAY),
+            get_application_status_counts(session, user_id),
+        ) == final_outputs
+        assert get_user_career_summary(session, user_id, ai_id) == post_form_b
+        assert get_application(session, user_id, application_id, today=TODAY) == saved_application
 
 
 def test_person3_contract_retakes_are_new_rows_latest_not_highest(session_factory):

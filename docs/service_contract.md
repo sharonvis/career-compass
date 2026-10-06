@@ -8,7 +8,7 @@ readiness/gaps/bands, reorder roadmaps, or edit assessment attempts in UI code.
 | Screen | Service calls |
 | --- | --- |
 | Onboarding / Profile | `create_user`, `get_user_by_email`, `get_user_profile`, `list_careers`, `set_target_career`, `set_skill_claim` |
-| Dashboard | `get_user_profile`, `get_user_career_summary`, `get_user_roadmap`, `get_ranked_opportunities`, `get_application_status_counts` |
+| Dashboard | `get_user_profile`, `get_user_career_summary`, `get_user_roadmap`, `get_ranked_opportunities`, `get_application_status_counts`, `list_recent_progress_events(session, user_id, limit=5)` |
 | My Career | `get_user_career_summary`, `list_careers`, `set_target_career` |
 | Roadmap | `get_user_roadmap`, `mark_roadmap_item_completed`, `mark_roadmap_item_incomplete` |
 | Opportunities | `get_ranked_opportunities`, `get_opportunity_match`, `save_opportunity` |
@@ -35,6 +35,16 @@ opportunity bands, or application counts. URLs are parsed but never fetched;
 certificates and issuers are not verified. Write services never commit.
 
 ## Person 2: backend services
+
+Recent Activity uses display-only `ProgressEvent` rows, never scoring inputs.
+Record events explicitly in the same `session_scope()` transaction as the
+successful action; if either fails, both roll back. Services do not emit events
+automatically. Person 1 records `target_career_changed` only when `changed=True`,
+`roadmap_item_completed` on completion, `opportunity_saved` only for new saves,
+`application_status_changed` only on actual status changes, and `evidence_added`
+only for new evidence. Person 3 records `assessment_completed` in the assessment
+transaction. Person 4 never records progress events. No events for no-ops,
+undo/removal, profile creation, or skill-claim edits. No edit/delete/mark-read API.
 
 Owns scoring, career summaries, roadmap ordering, opportunity matching, profiles,
 and application tracking. Readiness, gaps, next actions, and match bands are
