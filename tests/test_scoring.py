@@ -5,6 +5,7 @@ import pytest
 from services.scoring_service import (
     calculate_assessment_coverage,
     list_confirmed_gaps,
+    rank_next_actions,
     are_prerequisites_satisfied,
     calculate_career_readiness,
     calculate_confirmed_skill_gap,
@@ -12,6 +13,51 @@ from services.scoring_service import (
     classify_opportunity_match,
     select_next_action,
 )
+
+
+def test_ranked_improvements_keep_assessments_out_and_respect_prerequisites():
+    skills = [
+        dict(name="Later", required_level=2, importance=4, demonstrated_level=1, stable_priority=3),
+        dict(name="Earlier", required_level=2, importance=4, demonstrated_level=1, stable_priority=2),
+        dict(name="Biggest", required_level=3, importance=2, demonstrated_level=0, stable_priority=9),
+        dict(name="Assess", required_level=2, importance=99, assessable=True),
+        dict(name="Locked", required_level=3, importance=99, demonstrated_level=0,
+             prerequisites=[dict(skill_name="Missing", minimum_level=1)]),
+    ]
+    original = deepcopy(skills)
+    expected = [dict(action_type="improve", skill_name=name) for name in ["Biggest", "Earlier", "Later"]]
+    assert rank_next_actions(skills) == expected
+    assert select_next_action(skills) == expected[0]
+    assert skills == original
+
+
+def test_ranked_assessments_use_importance_capped_claim_then_priority():
+    skills = [
+        dict(name="Low importance", required_level=2, importance=3, claimed_level=3, assessable=True),
+        dict(name="Low claim", required_level=2, importance=4, claimed_level=1, assessable=True),
+        dict(name="Later", required_level=2, importance=4, claimed_level=3, assessable=True, stable_priority=3),
+        dict(name="Earlier", required_level=2, importance=4, claimed_level=2, assessable=True, stable_priority=2),
+        dict(name="Locked", required_level=2, importance=99, assessable=True,
+             prerequisites=[dict(skill_name="Python", minimum_level=1)]),
+        dict(name="Python", required_level=1, importance=0, demonstrated_level=0),
+    ]
+    assert rank_next_actions(skills) == [dict(action_type="assess", skill_name=name)
+                                       for name in ["Earlier", "Later", "Low claim", "Low importance"]]
+    assert select_next_action(skills) == dict(action_type="assess", skill_name="Earlier")
+
+
+@pytest.mark.parametrize("skills", [[], [dict(name="Learn only", required_level=2, importance=4)],
+                                   [dict(name="Met", required_level=2, importance=4, demonstrated_level=2)]])
+def test_rank_no_candidates(skills):
+    assert rank_next_actions(skills) == []
+    assert select_next_action(skills) is None
+
+
+def test_select_next_action_delegates_to_ranking(monkeypatch):
+    from services import scoring_service
+    expected = [dict(action_type="assess", skill_name="SQL")]
+    monkeypatch.setattr(scoring_service, "rank_next_actions", lambda skills: expected)
+    assert scoring_service.select_next_action([]) is expected[0]
 
 
 @pytest.mark.parametrize("levels,expected", [

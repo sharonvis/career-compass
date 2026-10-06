@@ -79,15 +79,17 @@ def build_career_skill_state(
             .where(UserSkillClaim.user_id == user_id, UserSkillClaim.skill_id.in_(skill_ids))
         ).all())
         demonstrated = {}
+        latest_attempt_ids = {}
         attempts = session.execute(
-            select(AssessmentAttempt.skill_id, AssessmentAttempt.resulting_level)
+            select(AssessmentAttempt.skill_id, AssessmentAttempt.resulting_level, AssessmentAttempt.id)
             .where(AssessmentAttempt.user_id == user_id,
                    AssessmentAttempt.skill_id.in_(skill_ids),
                    AssessmentAttempt.status == "completed")
             .order_by(AssessmentAttempt.completed_at.desc(), AssessmentAttempt.id.desc())
         )
-        for skill_id, level in attempts:
+        for skill_id, level, attempt_id in attempts:
             demonstrated.setdefault(skill_id, level)
+            latest_attempt_ids.setdefault(skill_id, attempt_id)
 
         prerequisites = {skill_id: [] for skill_id in skill_ids}
         for prerequisite in session.scalars(
@@ -113,6 +115,7 @@ def build_career_skill_state(
             "importance": requirement.importance,
             "claimed_level": claims.get(requirement.skill_id, 0),
             "demonstrated_level": demonstrated.get(requirement.skill_id),
+            "latest_attempt_id": latest_attempt_ids.get(requirement.skill_id),
             "assessable": requirement.skill.name in ASSESSABLE_SKILL_NAMES,
             "stable_priority": STABLE_PRIORITY.get(requirement.skill.name, float("inf")),
             "prerequisites": prerequisites[requirement.skill_id],

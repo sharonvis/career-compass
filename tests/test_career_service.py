@@ -84,6 +84,10 @@ def test_latest_completed_not_highest_or_insertion_order(session, catalog, older
     assert service.get_latest_demonstrated_level(session, catalog["user"].id, catalog["skills"]["SQL"].id) == newer
     state = service.build_career_skill_state(session, catalog["user"].id, catalog["careers"]["AI/ML Engineer"].id)
     assert next(s for s in state if s["name"] == "SQL")["demonstrated_level"] == newer
+    latest_id = session.scalar(select(m.AssessmentAttempt.id)
+                               .where(m.AssessmentAttempt.skill_id == catalog["skills"]["SQL"].id)
+                               .order_by(m.AssessmentAttempt.completed_at.desc(), m.AssessmentAttempt.id.desc()))
+    assert next(s for s in state if s["name"] == "SQL")["latest_attempt_id"] == latest_id
 
 
 def test_latest_completed_tie_uses_id_descending(session, catalog):
@@ -91,6 +95,8 @@ def test_latest_completed_tie_uses_id_descending(session, catalog):
     attempt(session, catalog, "SQL", 0, 0)
     assert service.get_latest_demonstrated_level(session, catalog["user"].id, catalog["skills"]["SQL"].id) == 0
     assert next(s for s in summary(session, catalog)["skills"] if s["name"] == "SQL")["demonstrated_level"] == 0
+    latest_id = session.scalar(select(m.AssessmentAttempt.id).order_by(m.AssessmentAttempt.id.desc()))
+    assert next(s for s in summary(session, catalog)["skills"] if s["name"] == "SQL")["latest_attempt_id"] == latest_id
 
 
 @pytest.mark.parametrize("status", ["in_progress", "abandoned"])
@@ -117,9 +123,10 @@ def test_skill_state_fields_priorities_claim_defaults_and_prerequisites(session,
     assert [s["stable_priority"] for s in state] == [1, 2, 3, 4, 5, 6]
     for skill in state:
         assert set(skill) == {"skill_id", "name", "required_level", "importance", "claimed_level",
-                              "demonstrated_level", "assessable", "stable_priority", "prerequisites"}
+                              "demonstrated_level", "latest_attempt_id", "assessable", "stable_priority", "prerequisites"}
         assert skill["skill_id"] == catalog["skills"][skill["name"]].id
         assert skill["claimed_level"] == 0 and skill["demonstrated_level"] is None
+        assert skill["latest_attempt_id"] is None
         assert skill["assessable"] == (skill["name"] in {"SQL", "Statistics"})
     by_name = {s["name"]: s for s in state}
     assert by_name["Machine Learning Fundamentals"]["prerequisites"] == [
