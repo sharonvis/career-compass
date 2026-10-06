@@ -206,7 +206,7 @@ class Opportunity(Base):
     is_seeded: Mapped[bool] = mapped_column(Boolean, default=False)
 
     skills: Mapped[list[OpportunitySkill]] = relationship(back_populates="opportunity", cascade="all, delete-orphan", passive_deletes=True)
-    applications: Mapped[list[Application]] = relationship(back_populates="opportunity", cascade="all, delete-orphan", passive_deletes=True)
+    applications: Mapped[list[Application]] = relationship(back_populates="opportunity", passive_deletes="all")
 
 
 class OpportunitySkill(Base):
@@ -235,7 +235,7 @@ class Application(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id", ondelete="CASCADE"), index=True)
+    opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id", ondelete="RESTRICT"), index=True)
     status: Mapped[str] = mapped_column(String, default="saved")
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)

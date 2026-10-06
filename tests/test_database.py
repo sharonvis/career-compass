@@ -231,7 +231,7 @@ def test_relationship_round_trip(session, parents, parent_key, collection, model
     ("attempt", [m.AttemptAnswer]),
     ("user", [m.UserSkillClaim, m.AssessmentAttempt, m.AttemptAnswer, m.Application,
               m.Evidence, m.RoadmapCompletion, m.ProgressEvent]),
-    ("opportunity", [m.OpportunitySkill, m.Application]),
+    ("opportunity", [m.OpportunitySkill]),
     ("career", [m.CareerSkillRequirement]),
 ])
 @pytest.mark.parametrize("load_children", [False, True])
@@ -257,6 +257,28 @@ def test_cascade_delete(session, parents, parent_key, child_models, load_childre
     session.expunge_all()
     for model, ids in child_ids.items():
         assert all(session.get(model, row_id) is None for row_id in ids)
+
+
+@pytest.mark.parametrize("load_children", [False, True])
+def test_application_history_blocks_opportunity_deletion(session, parents, load_children):
+    application = make_row(m.Application, parents)
+    opportunity_skill = make_row(m.OpportunitySkill, parents)
+    session.add_all([application, opportunity_skill])
+    session.commit()
+    opportunity_id = parents["opportunity"].id
+    application_id, opportunity_skill_id = application.id, opportunity_skill.id
+    session.expunge_all()
+    opportunity = session.get(m.Opportunity, opportunity_id)
+    if load_children:
+        list(opportunity.applications)
+        list(opportunity.skills)
+    session.delete(opportunity)
+    with pytest.raises(IntegrityError, match="FOREIGN KEY constraint failed"):
+        session.flush()
+    session.rollback()
+    assert session.get(m.Opportunity, opportunity_id) is not None
+    assert session.get(m.Application, application_id) is not None
+    assert session.get(m.OpportunitySkill, opportunity_skill_id) is not None
 
 
 def test_deleting_target_career_sets_null(session, parents):
