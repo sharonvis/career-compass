@@ -219,7 +219,24 @@ def get_weak_topics(topic_scores):
 
     return weak_topics
 
+# ============================================================
+# GENERATE NEXT ACTION
+# ============================================================
 
+def get_next_action(topic_scores):
+    """
+    Recommend the weakest SQL topic for improvement.
+    """
+
+    if not topic_scores:
+        return None
+
+    weakest_topic = min(
+        topic_scores,
+        key=lambda topic: topic_scores[topic]["percentage"]
+    )
+
+    return f"Improve SQL {weakest_topic}"
 # ============================================================
 # GENERATE ASSESSMENT RESULT
 # ============================================================
@@ -241,8 +258,13 @@ def evaluate_sql_assessment(question_results):
         topic_scores
     )
 
+    next_action = get_next_action(
+        topic_scores
+    )
+
     return {
         "estimated_level": estimated_level,
         "topic_scores": topic_scores,
-        "weak_topics": weak_topics
+        "weak_topics": weak_topics,
+        "next_action": next_action
     }
