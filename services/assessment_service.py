@@ -6,13 +6,18 @@ attempt answers, and assessment progress events.
 """
 
 from datetime import datetime, timezone
+from time import perf_counter_ns
 
 from sqlalchemy.orm import Session
 
 from database.models import AssessmentAttempt, AttemptAnswer, Skill, User
+from data.sql_datasets import EMPLOYEES, EMPLOYEE_DEPARTMENT_DATASET
+from data.sql_questions import SQL_QUESTIONS
+from data.statistics_questions import STATISTICS_QUESTIONS
 from services.progress_service import record_progress_event
 from services.sql_assessment import calculate_sql_level
-from services.statistics_assessment import calculate_statistics_level
+from services.sql_grader import grade_sql
+from services.statistics_assessment import calculate_statistics_level, grade_answer
 
 
 LEVEL_TO_INT = {
@@ -20,6 +25,11 @@ LEVEL_TO_INT = {
     "Beginner": 1,
     "Intermediate": 2,
     "Advanced": 3,
+}
+
+SQL_DATASETS = {
+    "employee_dataset_v1": {"employees": EMPLOYEES},
+    "employee_department_dataset_v1": EMPLOYEE_DEPARTMENT_DATASET,
 }
 
 
@@ -42,6 +52,26 @@ def _get_skill(session: Session, skill_name: str) -> Skill:
         raise ValueError(f"Skill '{skill_name}' was not found")
 
     return skill
+
+
+def _assessment_questions(skill_name: str, form_name: str) -> list[dict]:
+    """Return the configured questions for a skill and form."""
+    if skill_name == "SQL":
+        questions = [question for question in SQL_QUESTIONS if question["form"] == form_name]
+    elif skill_name == "Statistics":
+        questions = [
+            question for question in STATISTICS_QUESTIONS
+            if question["question_id"].startswith(f"STAT-{form_name}-")
+        ]
+    else:
+        raise ValueError(f"Unsupported assessment skill '{skill_name}'")
+
+    if not questions:
+        raise ValueError(f"No {skill_name} assessment questions exist for Form {form_name}")
+
+    return questions
+
+
 def start_assessment(session: Session, user_id: int, skill_name: str, form_name: str) -> dict:
     """
     Create a new in-progress assessment attempt.
@@ -55,6 +85,24 @@ def start_assessment(session: Session, user_id: int, skill_name: str, form_name:
         raise ValueError("form_name must be 'A' or 'B'")
 
     skill = _get_skill(session, skill_name)
+    if skill.name in {"SQL", "Statistics"}:
+        _assessment_questions(skill.name, form_name)
+
+    if skill.name == "SQL":
+        prior_attempt_count = (
+            session.query(AssessmentAttempt)
+            .filter(
+                AssessmentAttempt.user_id == user_id,
+                AssessmentAttempt.skill_id == skill.id,
+            )
+            .count()
+        )
+        expected_form = "A" if prior_attempt_count % 2 == 0 else "B"
+        if form_name != expected_form:
+            raise ValueError(
+                f"SQL Form {expected_form} is required for attempt "
+                f"{prior_attempt_count + 1}; received Form {form_name}"
+            )
 
     attempt = AssessmentAttempt(
         user_id=user_id,
@@ -83,14 +131,15 @@ def record_answer(
     attempt_id: int,
     question_id: str,
     submitted_answer: str | None,
-    correct: bool | None,
+    correct: bool | None = None,
     error_message: str | None = None,
     runtime_ms: int | None = None,
 ) -> dict:
     """
-    Record one answer for an in-progress assessment attempt.
+    Grade and record one answer for an in-progress assessment attempt.
 
-    The caller owns the transaction.
+    Legacy caller-supplied grading fields are ignored; correctness, errors,
+    and runtime are derived here. The caller owns the transaction.
     """
 
     attempt = session.get(AssessmentAttempt, attempt_id)
@@ -111,13 +160,41 @@ def record_answer(
             f"Question '{question_id}' has already been answered"
         )
 
+    questions = _assessment_questions(attempt.skill.name, attempt.form_name)
+    question = next(
+        (item for item in questions if item["question_id"] == question_id),
+        None,
+    )
+    if question is None:
+        raise ValueError(
+            f"Question '{question_id}' is not part of SQL/Statistics Form "
+            f"{attempt.form_name}"
+        )
+
+    started_ns = perf_counter_ns()
+    if attempt.skill.name == "SQL":
+        dataset = SQL_DATASETS.get(question["dataset_id"])
+        if dataset is None:
+            raise ValueError(f"Unknown SQL assessment dataset '{question['dataset_id']}'")
+        grading = grade_sql(
+            submitted_answer,
+            question["expected_answer"],
+            dataset,
+        )
+        is_correct = grading["correct"]
+        answer_error = grading.get("error")
+    else:
+        is_correct = grade_answer(question, submitted_answer)
+        answer_error = None
+    elapsed_ms = (perf_counter_ns() - started_ns) // 1_000_000
+
     answer = AttemptAnswer(
         attempt_id=attempt_id,
         question_reference=question_id,
         submitted_answer=submitted_answer,
-        is_correct=correct,
-        error_message=error_message,
-        runtime_ms=runtime_ms,
+        is_correct=is_correct,
+        error_message=answer_error,
+        runtime_ms=elapsed_ms,
     )
 
     session.add(answer)
@@ -135,14 +212,15 @@ def record_answer(
 def complete_assessment(
     session: Session,
     attempt_id: int,
-    question_results: list[dict],
+    question_results: list[dict] | None = None,
 ) -> dict:
     """
-    Grade and complete an assessment attempt.
+    Grade and complete an assessment attempt from its recorded answers.
 
     The assessment result and the assessment_completed
     progress event are created in the same transaction.
-    The caller owns the final commit/rollback.
+    The caller owns the final commit/rollback. The legacy question_results
+    argument is accepted for compatibility but is not used for scoring.
     """
 
     attempt = session.get(AssessmentAttempt, attempt_id)
@@ -153,8 +231,39 @@ def complete_assessment(
     if attempt.status != "in_progress":
         raise ValueError("Only an in-progress attempt can be completed")
 
-    if not question_results:
-        raise ValueError("question_results cannot be empty")
+    questions = _assessment_questions(attempt.skill.name, attempt.form_name)
+    answers = (
+        session.query(AttemptAnswer)
+        .filter(AttemptAnswer.attempt_id == attempt_id)
+        .order_by(AttemptAnswer.id)
+        .all()
+    )
+    answers_by_question = {answer.question_reference: answer for answer in answers}
+    expected_question_ids = {question["question_id"] for question in questions}
+
+    if set(answers_by_question) != expected_question_ids:
+        missing = expected_question_ids - set(answers_by_question)
+        unexpected = set(answers_by_question) - expected_question_ids
+        details = []
+        if missing:
+            details.append(f"missing answers for {len(missing)} question(s)")
+        if unexpected:
+            details.append(f"unexpected answers for {len(unexpected)} question(s)")
+        raise ValueError(f"Assessment cannot be completed: {', '.join(details)}")
+
+    question_results = []
+    for question in questions:
+        answer = answers_by_question[question["question_id"]]
+        if answer.is_correct is None:
+            raise ValueError(
+                f"Question '{question['question_id']}' has not been graded"
+            )
+        question_results.append({
+            "question_id": question["question_id"],
+            "topic": question["topic"],
+            "difficulty": question["difficulty"],
+            "correct": answer.is_correct,
+        })
 
     if attempt.skill.name == "SQL":
         estimated_level = calculate_sql_level(question_results)
