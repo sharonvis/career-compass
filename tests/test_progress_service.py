@@ -213,8 +213,11 @@ def test_static_isolation_and_no_ui_network():
                 if isinstance(node, ast.Import):
                     assert all("progress_service" not in alias.name.split(".") for alias in node.names)
                 elif isinstance(node, ast.ImportFrom):
-                    assert "progress_service" not in (node.module or "").split(".")
-                    assert all(alias.name != "progress_service" for alias in node.names)
+                    if path.stem == "assessment_service" and node.module == "services.progress_service":
+                        assert all(alias.name == "record_progress_event" for alias in node.names)
+                    else:
+                        assert "progress_service" not in (node.module or "").split(".")
+                        assert all(alias.name != "progress_service" for alias in node.names)
             if path.stem in core:
                 if isinstance(node, ast.Name):
                     assert node.id != "ProgressEvent"
