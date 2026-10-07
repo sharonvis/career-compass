@@ -82,6 +82,12 @@ counts and persisted IDs. It does not commit; the caller owns rollback/commit.
 Natural-key matches preserve IDs and refresh only opportunity type, source URL,
 and deadline. Seed rows are never converted to live rows.
 
+`ingest_opportunities(session, opportunity_type, keywords=None, location=None)`
+orchestrates SerpAPI → cache → normalization → persistence. It returns cache,
+fetch, normalization, insert, update, and skip counts. It does not commit; the
+caller owns the transaction. An empty successful search is valid and does not
+remove or alter seeded opportunities.
+
 Structured SerpAPI searches are cached by the effective Google Jobs query and
 location. Cache entries expire after 15 minutes by default; callers may override
 the TTL. Cache service writes are part of the caller-owned transaction. Failed
