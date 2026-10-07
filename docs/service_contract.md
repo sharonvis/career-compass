@@ -76,6 +76,12 @@ Owns SerpAPI calls, normalization, deduplication, and writes to `Opportunity` an
 `OpportunitySkill`. Do not calculate match bands, rank by student state, calculate
 readiness, or modify applications.
 
+`persist_normalized_opportunities(session, records)` accepts normalized live
+records, skips invalid entries, and returns created/updated/unchanged/skipped
+counts and persisted IDs. It does not commit; the caller owns rollback/commit.
+Natural-key matches preserve IDs and refresh only opportunity type, source URL,
+and deadline. Seed rows are never converted to live rows.
+
 Structured SerpAPI searches are cached by the effective Google Jobs query and
 location. Cache entries expire after 15 minutes by default; callers may override
 the TTL. Cache service writes are part of the caller-owned transaction. Failed
