@@ -68,6 +68,8 @@ def make_row(model, parents, **overrides):
         m.SkillPrerequisite: dict(skill_id=p["skill"].id, prerequisite_skill_id=p["prerequisite"].id, minimum_level=1),
         m.RoadmapCompletion: dict(user_id=p["user"].id, roadmap_item_key="python-basics"),
         m.Opportunity: dict(title="Intern", company="Example", opportunity_type="internship", source="manual"),
+        m.OpportunitySearchCache: dict(cache_key="a" * 64, results={"jobs_results": []},
+                                       expires_at=datetime.now(timezone.utc)),
         m.OpportunitySkill: dict(opportunity_id=p["opportunity"].id, skill_id=p["skill"].id, required_level=1),
         m.Application: dict(user_id=p["user"].id, opportunity_id=p["opportunity"].id),
         m.Evidence: dict(user_id=p["user"].id, skill_id=p["skill"].id, title="Project"),
@@ -88,7 +90,8 @@ def test_exact_schema(test_engine):
     assert set(inspect(test_engine).get_table_names()) == {
         "users", "skills", "careers", "career_skill_requirements", "user_skill_claims",
         "assessment_attempts", "attempt_answers", "skill_prerequisites", "roadmap_completions",
-        "opportunities", "opportunity_skills", "applications", "evidence", "progress_events",
+        "opportunities", "opportunity_search_cache", "opportunity_skills", "applications",
+        "evidence", "progress_events",
     }
 
 
@@ -298,6 +301,8 @@ def test_deleting_target_career_sets_null(session, parents):
 
 @pytest.mark.parametrize("model,field,expected", [
     (m.User, "created_at", "timestamp"), (m.UserSkillClaim, "updated_at", "timestamp"),
+    (m.OpportunitySearchCache, "created_at", "timestamp"),
+    (m.OpportunitySearchCache, "updated_at", "timestamp"),
     (m.Opportunity, "is_seeded", False), (m.OpportunitySkill, "is_required", True),
     (m.RoadmapCompletion, "completed", False), (m.Application, "status", "saved"),
     (m.AssessmentAttempt, "status", "in_progress"),
@@ -315,6 +320,8 @@ def test_defaults_after_flush(session, parents, model, field, expected):
 
 TIMESTAMP_FIELDS = [
     (m.User, "created_at"), (m.UserSkillClaim, "updated_at"),
+    (m.OpportunitySearchCache, "created_at"), (m.OpportunitySearchCache, "updated_at"),
+    (m.OpportunitySearchCache, "expires_at"),
     (m.AssessmentAttempt, "started_at"), (m.AssessmentAttempt, "completed_at"),
     (m.RoadmapCompletion, "completed_at"), (m.Application, "created_at"),
     (m.Application, "updated_at"), (m.ProgressEvent, "created_at"),
@@ -327,9 +334,10 @@ def test_utc_timestamp_reload(session, parents, model, field):
     row = make_row(model, parents, **{field: original})
     session.add(row)
     session.commit()
-    row_id = row.id
+    identity = session.identity_key(instance=row)[1]
     session.expunge_all()
-    timestamp = getattr(session.get(model, row_id), field)
+    primary_key = identity[0] if len(identity) == 1 else identity
+    timestamp = getattr(session.get(model, primary_key), field)
     assert timestamp is not None
     assert timestamp.tzinfo is timezone.utc
     assert timestamp.utcoffset() == timedelta(0)

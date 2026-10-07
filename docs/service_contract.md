@@ -76,6 +76,11 @@ Owns SerpAPI calls, normalization, deduplication, and writes to `Opportunity` an
 `OpportunitySkill`. Do not calculate match bands, rank by student state, calculate
 readiness, or modify applications.
 
+Structured SerpAPI searches are cached by the effective Google Jobs query and
+location. Cache entries expire after 15 minutes by default; callers may override
+the TTL. Cache service writes are part of the caller-owned transaction. Failed
+searches do not replace cached data.
+
 Live rows need non-empty title/company, nullable location, an agreed type such
 as `internship`/`entry_level`, a non-`seed` source, source URL, date-or-None deadline,
 and `is_seeded=False`. Skills must reference the catalog, use levels 1–3, and

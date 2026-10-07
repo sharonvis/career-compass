@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -207,6 +207,16 @@ class Opportunity(Base):
 
     skills: Mapped[list[OpportunitySkill]] = relationship(back_populates="opportunity", cascade="all, delete-orphan", passive_deletes=True)
     applications: Mapped[list[Application]] = relationship(back_populates="opportunity", passive_deletes="all")
+
+
+class OpportunitySearchCache(Base):
+    __tablename__ = "opportunity_search_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    results: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, onupdate=utc_now)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class OpportunitySkill(Base):
