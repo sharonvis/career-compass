@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Yeseva+One&family=Josefin+Sans:wght@400;500;600;700&family=Istok+Web:wght@400;700&display=swap');
+
+.stApp:has(.cc-onboarding-marker){background:#faf7f0!important;color:#191a20!important;font-family:'Istok Web',sans-serif!important}
+.stApp:has(.cc-onboarding-marker) [data-testid="stAppViewContainer"],.stApp:has(.cc-onboarding-marker) .block-container{background:#faf7f0!important}
+.stApp:has(.cc-onboarding-marker) .block-container{max-width:none!important;padding:0 6vw 28px!important}
+.stApp:has(.cc-onboarding-marker) section[data-testid="stSidebar"]{display:none!important}
+.stApp:has(.cc-onboarding-marker) header[data-testid="stHeader"],.stApp:has(.cc-onboarding-marker) [data-testid="stToolbar"]{display:none!important}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-marker{height:0;overflow:hidden}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-topbar{height:70px;width:calc(100% + 12vw);margin:0 -6vw 0;padding:0 4vw;background:#fffdfa;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f2eee8}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-brand{display:flex;align-items:center;gap:10px;color:#191a20;font-family:'Josefin Sans',sans-serif;font-size:22px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-brand img{display:block;width:24px;height:24px;object-fit:contain}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-step{font-family:'Josefin Sans',sans-serif;font-size:14px;font-weight:700;letter-spacing:.7px;color:#77736f}
+.stApp:has(.cc-onboarding-marker) [data-testid="stHorizontalBlock"]{gap:24px}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-eyebrow,.stApp:has(.cc-onboarding-marker) .cc-section-eyebrow{font-family:'Josefin Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:.6px;color:#fa5235;margin:0 0 14px}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-title{font-family:'Yeseva One',Georgia,serif;font-size:48px;line-height:1.12;letter-spacing:-.5px;color:#191a20;margin:0 0 14px}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-intro,.stApp:has(.cc-onboarding-marker) .cc-section-description{font-family:'Istok Web',sans-serif;font-size:16px;line-height:1.5;color:#77736f;margin:0}
+.stApp:has(.cc-onboarding-marker) .cc-quick-card{background:#f8ded2;border:1.5px solid #383532;border-radius:22px;box-shadow:0 4px 0 #171717;padding:19px 22px;min-width:280px}
+.stApp:has(.cc-onboarding-marker) .cc-quick-card strong{display:block;font-family:'Josefin Sans',sans-serif;font-size:17px;color:#191a20;letter-spacing:.2px}
+.stApp:has(.cc-onboarding-marker) .cc-quick-card strong span,.stApp:has(.cc-onboarding-marker) .cc-claim-note span{color:#fa5235}
+.stApp:has(.cc-onboarding-marker) .cc-quick-card p{font-size:13px;color:#77736f;margin:12px 0 0;white-space:nowrap}
+.stApp:has(.cc-onboarding-marker) [data-testid="stHorizontalBlock"]:has(.cc-onboarding-title){margin-top:48px;margin-bottom:70px}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-about-card,.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-card,.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card{background:#fffdfa;border:2px solid #423d39;border-radius:24px;box-shadow:0 5px 0 #111;padding:30px 38px 20px}
+.stApp:has(.cc-onboarding-marker) .cc-section-eyebrow{margin-bottom:16px}
+.stApp:has(.cc-onboarding-marker) .cc-section-title{font-family:'Yeseva One',Georgia,serif;font-size:30px;line-height:1.2;color:#191a20;margin:0 0 6px}
+.stApp:has(.cc-onboarding-marker) .cc-section-description{margin-bottom:28px}
+.stApp:has(.cc-onboarding-marker) .cc-field-label{font-family:'Josefin Sans',sans-serif;font-size:14px;font-weight:700;color:#292725;margin:0 0 10px}
+.stApp:has(.cc-onboarding-marker) [data-testid="stTextInput"] input,.stApp:has(.cc-onboarding-marker) [data-testid="stSelectbox"] [data-baseweb="select"]>div{height:50px!important;min-height:50px!important;border:1.5px solid #ded5cc!important;border-radius:11px!important;background:#fffdfa!important;box-shadow:0 4px 0 #d8cec4!important;color:#191a20!important;font-family:'Istok Web',sans-serif!important;font-size:15px!important}
+.stApp:has(.cc-onboarding-marker) [data-testid="stTextInput"] input{padding:0 16px!important}
+.stApp:has(.cc-onboarding-marker) [data-testid="stTextInput"] input:focus,.stApp:has(.cc-onboarding-marker) [data-testid="stSelectbox"] [data-baseweb="select"]>div:focus-within{border-color:#fa5235!important;box-shadow:0 0 0 1px #fa5235,0 4px 0 #d8cec4!important}
+.stApp:has(.cc-onboarding-marker) .cc-year-label{margin-top:28px}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"]>div{gap:10px!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"] label{min-width:106px;min-height:42px;display:flex;align-items:center;justify-content:center;padding:0 14px;border:1.5px solid #e4dbd2;border-radius:12px;background:#fffdfa;color:#393633;font-family:'Istok Web',sans-serif;font-size:14px;cursor:pointer}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"] label:has(input:checked){background:#fa5235;border-color:#fa5235;color:#fff;font-weight:700}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"] label input{position:absolute;opacity:0;width:1px;height:1px}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-connector{height:56px;position:relative;margin:0 auto;border-left:1px dashed #fa5235;width:1px}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-connector:after{content:"";position:absolute;width:11px;height:11px;border-radius:50%;background:#fa5235;left:-6px;bottom:0}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-career-card .cc-section-description{margin-bottom:30px}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"]>div{gap:12px!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label{display:flex;align-items:center;min-height:80px;padding:12px 18px;border:1.5px solid #e4dbd2;border-radius:17px;background:#fffdfa;color:#191a20;font-family:'Josefin Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label:has(input:checked){background:#f8ded2;border:2px solid #fa5235}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label input{accent-color:#fa5235}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label p{margin:0!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label p+p{font-family:'Istok Web',sans-serif;font-size:13px;font-weight:400;color:#77736f;margin-top:6px!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card .cc-section-description{margin-bottom:26px}
+.stApp:has(.cc-onboarding-marker) .cc-level-heading{font-family:'Josefin Sans',sans-serif;font-size:12px;font-weight:600;color:#77736f;text-align:center;margin:0 0 8px}
+.stApp:has(.cc-onboarding-marker) .cc-skill-name{font-family:'Josefin Sans',sans-serif;font-size:16px;font-weight:700;color:#191a20;margin:0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"]>div{gap:10px!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"] label{min-height:38px;display:flex;align-items:center;justify-content:center;padding:0 8px;border:1.5px solid #e1d8cf;border-radius:11px;background:#fffdfa;color:#77736f;font-family:'Istok Web',sans-serif;font-size:12px;cursor:pointer}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"] label:has(input:checked){background:#fa5235;border-color:#fa5235;color:#fff}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"] label input{accent-color:#fa5235}
+.stApp:has(.cc-onboarding-marker) .cc-claim-note{display:inline-block;background:#f8ded2;border-radius:11px;padding:11px 16px;margin-top:6px;color:#292725;font-family:'Josefin Sans',sans-serif;font-size:13px;font-weight:600}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta{background:#191a20;border-radius:14px;padding:9px 40px;margin-top:34px;margin-bottom:0}
+.stApp:has(.cc-onboarding-marker) .cc-cta-title{font-family:'Josefin Sans',sans-serif;font-size:24px;font-weight:700;color:#fff;margin:0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stButton"] button{height:42px;background:#fa5235!important;border:0!important;border-radius:11px!important;color:#fff!important;font-family:'Josefin Sans',sans-serif!important;font-size:14px!important;font-weight:700!important;white-space:nowrap}
+@media(max-width:850px){.stApp:has(.cc-onboarding-marker) .block-container{padding:0 24px 24px!important}.stApp:has(.cc-onboarding-marker) .cc-onboarding-topbar{width:calc(100% + 48px);margin:0 -24px;padding:0 24px}.stApp:has(.cc-onboarding-marker) .cc-onboarding-title{font-size:38px}.stApp:has(.cc-onboarding-marker) [data-testid="stHorizontalBlock"]:has(.cc-onboarding-title){margin-bottom:42px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-about-card,.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-card,.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card{padding:24px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card .st-key-onboarding-years{overflow-x:auto}}
+@media(max-width:620px){.stApp:has(.cc-onboarding-marker) [data-testid="stHorizontalBlock"]:has(.cc-onboarding-title){display:block}.stApp:has(.cc-onboarding-marker) .cc-quick-card{margin-top:24px}.stApp:has(.cc-onboarding-marker) .cc-onboarding-title{font-size:34px}.stApp:has(.cc-onboarding-marker) .cc-section-title{font-size:25px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-card [data-testid="stRadio"] label{font-size:14px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"] label{font-size:10px;padding:0 4px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta{padding:20px 24px}.stApp:has(.cc-onboarding-marker) .cc-cta-title{font-size:20px}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stHorizontalBlock"]{display:block}}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label [data-testid="stMarkdownContainer"] p:first-child{font-family:'Josefin Sans',sans-serif;font-size:16px;font-weight:700;color:#191a20;margin:0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label [data-testid="stMarkdownContainer"] p:nth-child(2){font-family:'Istok Web',sans-serif;font-size:13px;font-weight:400;color:#77736f;margin:6px 0 0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label:has(input:checked):after{content:"✦";margin-left:auto;color:#fa5235;font-size:25px;line-height:1}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-connector{margin:-14px auto}
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-connector:after{top:50%;bottom:auto;transform:translateY(-50%)}
+
+/* Onboarding sizing and alignment refinements. */
+.stApp:has(.cc-onboarding-marker) .cc-onboarding-brand img{width:30px;height:30px}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"]{width:100%;max-width:none}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"]>div{display:flex!important;width:100%!important;gap:10px!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stRadio"] label{flex:1 1 0;min-width:0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stWidgetLabel"]{display:none!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"]{width:100%!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"]>div{display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label{width:100%!important;box-sizing:border-box!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-career-picker [data-testid="stRadio"] label [data-testid="stMarkdownContainer"] p+p{font-family:'Istok Web',sans-serif;font-size:13px;font-weight:400;color:#77736f;margin:6px 0 0!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"]{width:100%!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"]>div{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;width:100%!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"] label{width:100%!important;box-sizing:border-box!important}
+.stApp:has(.cc-onboarding-marker) .cc-level-heading{width:100%;text-align:center}
+.stApp:has(.cc-onboarding-marker) .cc-claim-note{display:block;width:50%;box-sizing:border-box}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stHorizontalBlock"]{width:100%;align-items:center!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stColumn"]:first-child{display:flex;align-items:center;justify-content:center;min-height:42px}
+.stApp:has(.cc-onboarding-marker) .cc-cta-title{width:100%;text-align:center;margin:0}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stColumn"]:last-child{display:flex;justify-content:flex-end}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-cta [data-testid="stButton"]{width:100%}
+@media(max-width:620px){.stApp:has(.cc-onboarding-marker) .cc-claim-note{width:100%}.stApp:has(.cc-onboarding-marker) .st-key-onboarding-skills-card [data-testid="stRadio"]>div{gap:6px!important}}
+
+/* Year selection buttons span their four equal Streamlit columns. */
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stHorizontalBlock"]{width:100%!important;align-items:stretch!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stColumn"]{min-width:0!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stButton"]{width:100%!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stButton"] button{width:100%!important;height:42px!important;min-height:42px!important;border-radius:12px!important;font-family:'Istok Web',sans-serif!important;font-size:14px!important;font-weight:600!important;box-shadow:none!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stBaseButton-secondary"],.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years button[kind="secondary"]{background:#fffdfa!important;border:1.5px solid #e4dbd2!important;color:#393633!important}
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years [data-testid="stBaseButton-primary"],.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years button[kind="primary"]{background:#fa5235!important;border:1.5px solid #fa5235!important;color:#fff!important}
+
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years .st-key-year-option-1-selected [data-testid="stBaseButton-secondary"],
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years .st-key-year-option-2-selected [data-testid="stBaseButton-secondary"],
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years .st-key-year-option-3-selected [data-testid="stBaseButton-secondary"],
+.stApp:has(.cc-onboarding-marker) .st-key-onboarding-years .st-key-year-option-4-selected [data-testid="stBaseButton-secondary"]{background:#fa5235!important;border-color:#fa5235!important;color:#fff!important}

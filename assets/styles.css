@@ -1,9 +1,9 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap');
-:root{--ink:#191a20;--orange:#fa5235;--muted:#77736f;--cream:#fffdfa;--peach:#f8ded2}
+﻿@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&family=Yeseva+One&family=Josefin+Sans:wght@400;500;600;700&family=Istok+Web:wght@400;700&display=swap');
+:root{--ink:#191a20;--orange:#fa5235;--muted:#77736f;--cream:#fffdfa;--peach:#f8ded2;--cc-charcoal:#191a20;--cc-coral:#fa5235;--cc-cream:#faf7f0;--cc-card:#fffdfa;--cc-border:#e9e4dc;--cc-heading:'Yeseva One',Georgia,serif;--cc-ui:'Josefin Sans',sans-serif;--cc-body:'Istok Web',sans-serif}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 .stApp{background:#fff!important;color:var(--ink)!important;font-family:'DM Sans',sans-serif}
-header[data-testid="stHeader"],#MainMenu,footer{display:none!important}
+.stApp:not(:has(.cc-layout-marker)) header[data-testid="stHeader"],#MainMenu,footer{display:none!important}
 .block-container{max-width:1440px;padding:0 5vw 40px!important}
 .topbar{height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f2f1ef;padding:0}
 .brand img{width:250px;display:block}
@@ -98,3 +98,51 @@ body,.stApp,[data-testid="stAppViewContainer"],.block-container{color:#191a20!im
 #top .bottom-cta{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;margin-top:38px!important;padding:14px 32px!important;border-radius:17px!important;background:#191a20!important;color:#fff!important}
 #top .bottom-cta strong{color:#fff!important}
 
+
+/* Logged-in Career Compass shell. Activated only when a shared UI component is rendered. */
+.stApp:has(.cc-layout-marker){background:var(--cc-cream)!important;font-family:var(--cc-body)!important}
+.stApp:has(.cc-layout-marker) [data-testid="stAppViewContainer"]{background:var(--cc-cream)!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"]{background:var(--cc-charcoal)!important;border-right:1px solid #37383e}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stSidebarContent"]{background:var(--cc-charcoal)!important;padding:28px 18px}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{color:#f8f5ef;font-family:var(--cc-ui);font-size:16px;font-weight:600}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label{color:#f8f5ef!important;font-family:var(--cc-ui)!important;font-size:16px!important;font-weight:600!important;border-radius:12px;padding:10px 12px;transition:background .15s ease}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked){background:var(--cc-coral)!important;color:#fff!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label p{color:inherit!important;margin:0}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stWidgetLabel"]{display:none}
+.stApp:has(.cc-layout-marker) .block-container{background:var(--cc-cream)!important}
+.stApp:has(.cc-layout-marker) .cc-header-title{font-family:var(--cc-heading);font-size:30px;color:var(--cc-charcoal);margin:0}
+.stApp:has(.cc-layout-marker) .cc-header-subtitle{font-family:var(--cc-body);font-size:14px;color:var(--muted);margin:4px 0 0}
+.stApp:has(.cc-layout-marker) [data-testid="stHorizontalBlock"]:has(.cc-header-marker){align-items:center}
+.stApp:has(.cc-layout-marker) .cc-header-marker{height:0;overflow:hidden}
+.stApp:has(.cc-layout-marker) [data-testid="stButton"] button,.stApp:has(.cc-layout-marker) [data-testid="stPopover"] button{font-family:var(--cc-ui)!important;color:var(--cc-charcoal)!important;border-color:var(--cc-border)!important;background:var(--cc-card)!important;border-radius:999px!important}
+.stApp:has(.cc-layout-marker) [data-testid="stPopoverBody"]{background:var(--cc-card)!important;border:1px solid var(--cc-border)!important;border-radius:14px!important}
+.stApp:has(.cc-layout-marker) [data-testid="stPopoverBody"] *{font-family:var(--cc-body)}
+.stApp:has(.cc-layout-marker) .cc-card{background:var(--cc-card);border:1px solid var(--cc-border);border-radius:18px;padding:22px}
+.stApp:has(.cc-layout-marker) h1,.stApp:has(.cc-layout-marker) h2,.stApp:has(.cc-layout-marker) h3{font-family:var(--cc-heading)!important}
+
+
+/* Header controls: free standing search icon and charcoal profile avatar. */
+.stApp:has(.cc-layout-marker) .cc-search-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:40px;color:var(--cc-charcoal)}
+.stApp:has(.cc-layout-marker) .cc-search-icon svg{display:block;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.stApp:has(.cc-layout-marker) [data-testid="stPopover"] button{width:42px!important;min-width:42px!important;height:42px!important;padding:0!important;position:relative;font-family:var(--cc-ui)!important;font-weight:700!important;font-size:16px!important;color:#fff!important;background:#25262b!important;border:0!important;border-radius:50%!important;box-shadow:none!important}
+.stApp:has(.cc-layout-marker) [data-testid="stPopover"] button:after{content:"";position:absolute;left:49px;top:16px;width:7px;height:7px;border-right:1.5px solid var(--cc-charcoal);border-bottom:1.5px solid var(--cc-charcoal);transform:rotate(45deg)}
+
+/* Reference-matched shared logged-in shell. */
+.stApp:has(.cc-layout-marker) header[data-testid="stHeader"]{background:var(--cc-cream)!important;box-shadow:none!important}
+.stApp:has(.cc-layout-marker) [data-testid="stToolbar"]{display:none!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"]{width:228px!important;min-width:228px!important;max-width:228px!important;background:var(--cc-charcoal)!important;border:0!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stSidebarContent"]{background:var(--cc-charcoal)!important;padding:28px 16px 24px!important}
+.stApp:has(.cc-layout-marker) .cc-sidebar-brand{display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;font-family:var(--cc-ui);font-size:22px;font-weight:600;letter-spacing:.4px;line-height:1.08;margin:0 0 50px;padding:0;white-space:nowrap}
+.stApp:has(.cc-layout-marker) .cc-sidebar-brand img{display:block;width:22px;height:22px;object-fit:contain;flex:none}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"]>div{gap:5px!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label{display:flex!important;align-items:center!important;gap:12px!important;min-height:50px!important;padding:0 14px!important;border-radius:8px!important;color:#fff!important;font-family:var(--cc-ui)!important;font-size:15px!important;font-weight:600!important;line-height:1!important;cursor:pointer}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label p{color:inherit!important;font-family:inherit!important;font-size:inherit!important;font-weight:inherit!important;margin:0!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label input{position:absolute!important;opacity:0!important;width:1px!important;height:1px!important}
+.stApp:has(.cc-layout-marker) section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked){background:var(--cc-coral)!important;color:var(--cc-charcoal)!important}
+.stApp:has(.cc-layout-marker) .block-container{max-width:none!important;padding:22px 2vw 40px 3.5vw!important}
+.stApp:has(.cc-layout-marker) .cc-header-eyebrow{font-family:var(--cc-ui);font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--cc-coral);margin:10px 0 8px}
+.stApp:has(.cc-layout-marker) .cc-header-title{font-family:var(--cc-heading)!important;font-size:48px!important;line-height:1.12!important;color:var(--cc-charcoal)!important;margin:0 0 12px!important}
+.stApp:has(.cc-layout-marker) .cc-header-subtitle{font-family:var(--cc-body)!important;font-size:16px!important;color:var(--muted)!important;margin:0!important}
+@media(max-width:900px){.stApp:has(.cc-layout-marker) .block-container{padding:22px 24px 32px!important}}
+.stApp:has(.cc-layout-marker) .cc-search-icon{margin-top:10px}
+.stApp:has(.cc-layout-marker) [data-testid="stPopover"] button{margin-top:4px!important}
