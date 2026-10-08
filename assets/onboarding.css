@@ -80,6 +80,7 @@
   margin: 0 0 8px;
 }
 .cc-section-description { margin-bottom: 24px; }
+.st-key-onboarding-about-card .cc-section-description { margin-bottom: 40px; }
 .cc-field-label {
   color: var(--ink);
   font: 600 14px/1.35 'Josefin Sans', sans-serif;
@@ -127,30 +128,39 @@ input::placeholder { color: var(--muted); opacity: 1; }
   background: repeating-linear-gradient(to bottom, var(--coral) 0 4px, transparent 4px 8px);
 }
 .cc-onboarding-connector + div { min-height: 0; }
-.st-key-onboarding-career-picker [data-testid="stRadio"] > label,
-.st-key-onboarding-career-picker [data-testid="stRadio"] [data-testid="stWidgetLabel"] { display: none; }
-.st-key-onboarding-career-picker [role="radiogroup"] { gap: 10px; }
-.st-key-onboarding-career-picker [role="radiogroup"] > label {
-  align-items: flex-start;
-  padding: 16px 20px;
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"] {
+  padding: 12px 18px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--card);
 }
-.st-key-onboarding-career-picker [role="radiogroup"] > label:has(input:checked) {
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"][class*="-selected"] {
   border-color: var(--coral);
   background: var(--peach);
 }
-.st-key-onboarding-career-picker [role="radiogroup"] > label p {
-  white-space: pre-line;
-  color: var(--muted);
-  font: 400 14px/1.5 'Istok Web', sans-serif;
+.st-key-onboarding-career-picker [class*="st-key-target-career-control-"] button {
+  width: 28px;
+  min-width: 28px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--coral);
+  box-shadow: none;
+  font: 600 22px/1 'Istok Web', sans-serif;
 }
-.st-key-onboarding-career-picker [role="radiogroup"] > label p:first-of-type {
+.cc-career-option-copy strong,
+.cc-career-option-copy span { display: block; }
+.cc-career-option-copy strong {
   color: var(--ink);
   font: 600 18px/1.35 'Josefin Sans', sans-serif;
 }
-.st-key-onboarding-career-picker [role="radiogroup"] > label input { accent-color: var(--coral); }
+.cc-career-option-copy span {
+  margin-top: 4px;
+  color: var(--muted);
+  font: 400 14px/1.5 'Istok Web', sans-serif;
+}
+.cc-career-option-star { color: var(--coral); font-size: 25px; line-height: 1; }
 
 .cc-level-heading { color: var(--muted); text-align: center; font: 500 12px/1.3 'Josefin Sans', sans-serif; padding-bottom: 7px; }
 .cc-skill-name { color: var(--ink); font: 700 16px/1.3 'Josefin Sans', sans-serif; padding-left: 8px; }
@@ -217,4 +227,13 @@ input::placeholder { color: var(--muted); opacity: 1; }
   .st-key-onboarding-skills-card > [data-testid="stVerticalBlock"] { min-width: 580px; }
   .st-key-onboarding-cta { padding: 16px; }
   .cc-cta-title { font-size: 17px; }
+}
+.st-key-onboarding-years [data-testid="stHorizontalBlock"] {
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+}
+.st-key-onboarding-years [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+  flex: 1 1 0% !important;
+  width: 0 !important;
+  min-width: 0 !important;
 }

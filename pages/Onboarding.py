@@ -19,6 +19,10 @@ def _set_year_of_study(year: str) -> None:
     st.session_state["year_of_study"] = year
 
 
+def _set_target_career(career: str) -> None:
+    st.session_state["onboarding_selected_career"] = career
+
+
 st.session_state.setdefault("year_of_study", "2nd Year")
 ROOT = Path(__file__).resolve().parents[1]
 css = (ROOT / "assets" / "onboarding.css").read_text(encoding="utf-8")
@@ -150,14 +154,34 @@ with st.container(key="onboarding-career-card"):
         unsafe_allow_html=True,
     )
     with st.container(key="onboarding-career-picker"):
-        st.radio(
-            "Target career",
-            options=tuple(careers),
-            index=0,
-            format_func=lambda career: f"{career}\n\n{careers[career]}",
-            key="target_career",
-            label_visibility="collapsed",
-        )
+        if "onboarding_selected_career" not in st.session_state:
+            previous_career = st.session_state.get("target_career", "AI / ML Engineer")
+            st.session_state["onboarding_selected_career"] = (
+                previous_career if previous_career in careers else "AI / ML Engineer"
+            )
+        for index, (career, description) in enumerate(careers.items()):
+            selected = st.session_state["onboarding_selected_career"] == career
+            selected_key = "selected" if selected else "unselected"
+            with st.container(key=f"target-career-card-{index}-{selected_key}"):
+                selector, copy, marker = st.columns([0.055, 0.89, 0.055], vertical_alignment="center")
+                with selector:
+                    with st.container(key=f"target-career-control-{index}"):
+                        st.button(
+                            "●" if selected else "○",
+                            key=f"target_career_select_{index}",
+                            help=f"Select {career}",
+                            on_click=_set_target_career,
+                            args=(career,),
+                        )
+                with copy:
+                    st.markdown(
+                        f'<div class="cc-career-option-copy"><strong>{career}</strong>'
+                        f'<span>{description}</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                with marker:
+                    if selected:
+                        st.markdown('<span class="cc-career-option-star">✦</span>', unsafe_allow_html=True)
 
 st.markdown('<div class="cc-onboarding-connector" aria-hidden="true"></div>', unsafe_allow_html=True)
 
@@ -207,4 +231,5 @@ with st.container(key="onboarding-cta"):
     with cta_text:
         st.markdown('<p class="cc-cta-title">Ready to see your Career Compass?</p>', unsafe_allow_html=True)
     with cta_button:
-        st.button("Build My Career Compass  →", type="primary", key="build_career_compass", width="stretch")
+        if st.button("Build My Career Compass  →", type="primary", key="build_career_compass", width="stretch"):
+            st.switch_page("pages/Dashboard.py")

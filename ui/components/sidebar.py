@@ -1,4 +1,4 @@
-﻿"""Reusable sidebar navigation for logged-in Career Compass pages."""
+"""Shared navigation for the signed-in Career Compass pages."""
 
 import base64
 from pathlib import Path
@@ -8,27 +8,19 @@ import streamlit as st
 from ui.components import load_shared_styles
 
 NAV_ITEMS = (
-    "Dashboard",
-    "My Career",
-    "Roadmap",
-    "Opportunities",
-    "Applications",
-    "Settings",
+    ("Dashboard", "pages/Dashboard.py", "dashboard"),
+    ("My Career", "pages/my_career.py", "work_outline"),
+    ("Roadmap", "pages/Roadmap.py", "route"),
+    ("Opportunities", "pages/Opportunities.py", "work"),
+    ("Applications", "pages/Applications.py", "description"),
+    ("Settings", "pages/Settings.py", "settings"),
 )
-NAV_ICONS = {
-    "Dashboard": "▦",
-    "My Career": "♙",
-    "Roadmap": "⌘",
-    "Opportunities": "◇",
-    "Applications": "▧",
-    "Settings": "⚙",
-}
 
 
-def render_sidebar(selected: str = "Dashboard") -> str:
-    """Render the shared navigation and return the selected destination."""
-    if selected not in NAV_ITEMS:
-        raise ValueError(f"selected must be one of: {', '.join(NAV_ITEMS)}")
+def render_sidebar(selected: str = "Dashboard") -> None:
+    """Render shared branding and page links, highlighting the current page."""
+    if selected not in {item[0] for item in NAV_ITEMS}:
+        raise ValueError(f"selected must be one of: {', '.join(item[0] for item in NAV_ITEMS)}")
 
     load_shared_styles()
     st.markdown('<div class="cc-layout-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
@@ -37,18 +29,18 @@ def render_sidebar(selected: str = "Dashboard") -> str:
 
     with st.sidebar:
         st.markdown(
-            f'<div class="cc-sidebar-brand">'
-            f'<img src="data:image/png;base64,{logo}" alt="">'
-            f'<span>CAREER<br>COMPASS</span>'
-            f'</div>',
+            f'<div class="cc-sidebar-brand"><img src="data:image/png;base64,{logo}" alt="">'
+            '<span>CAREER<br>COMPASS</span></div>',
             unsafe_allow_html=True,
         )
-        destination = st.radio(
-            "Primary navigation",
-            options=NAV_ITEMS,
-            format_func=lambda item: f"{NAV_ICONS[item]}  {item}",
-            index=NAV_ITEMS.index(selected),
-            label_visibility="collapsed",
-            key="cc_primary_navigation",
-        )
-    return destination
+        for label, page, icon in NAV_ITEMS:
+            if label == selected:
+                st.markdown(
+                    f'<div class="cc-nav-active"><span class="cc-nav-icon">{_icon(icon)}</span>{label}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.page_link(page, label=label, icon=f":material/{icon}:")
+def _icon(name: str) -> str:
+    """Material Symbols token for the active static navigation item."""
+    return f'<span class="material-symbols-rounded">{name}</span>'
