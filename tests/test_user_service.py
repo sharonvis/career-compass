@@ -268,3 +268,27 @@ def test_no_ui_network_or_scoring_implementation():
         elif isinstance(node, ast.ImportFrom):
             assert (node.module or "").split(".")[0] not in forbidden
             assert node.module not in {"services.scoring_service", "services.roadmap_service", "services.opportunity_service"}
+
+
+@pytest.mark.parametrize("name,count", [("AI/ML Engineer", 6), ("Software Engineer", 5), ("Data Analyst", 6)])
+def test_career_skill_catalog(session, name, count, monkeypatch):
+    career_id = ids(session)["careers"][name]
+    with monkeypatch.context() as context:
+        for method in ("flush", "commit", "add"):
+            context.setattr(session, method, Mock(side_effect=AssertionError(method)))
+        rows = service.list_career_skills(session, career_id)
+        assert rows == service.list_career_skills(session, career_id)
+    assert len(rows) == count
+    assert [r["skill_id"] for r in rows] == sorted(r["skill_id"] for r in rows)
+    assert all(set(r) == {"skill_id", "name", "required_level", "importance"} for r in rows)
+    assert all(ids(session)["skills"][r["name"]] == r["skill_id"] for r in rows)
+
+
+def test_career_skill_catalog_unknown_and_inactive(session):
+    with pytest.raises(CareerNotFoundError):
+        service.list_career_skills(session, 99999)
+    career_id = ids(session)["careers"]["Data Analyst"]
+    requirement = session.scalar(select(m.CareerSkillRequirement).where(m.CareerSkillRequirement.career_id == career_id))
+    requirement.required_level = 0
+    session.flush()
+    assert requirement.skill_id not in {r["skill_id"] for r in service.list_career_skills(session, career_id)}

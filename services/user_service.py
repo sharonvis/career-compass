@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from database.models import Career, Skill, User, UserSkillClaim
+from database.models import Career, CareerSkillRequirement, Skill, User, UserSkillClaim
 from services.career_service import CareerNotFoundError, UserNotFoundError
 from services.errors import SkillNotFoundError
 
@@ -100,3 +100,21 @@ def set_skill_claim(session: Session, user_id: int, skill_id: int, claimed_level
             claim.claimed_level = claimed_level
     session.flush()
     return dict(user_id=user_id, skill_id=skill_id, skill_name=skill.name, claimed_level=claimed_level)
+
+
+def list_career_skills(session: Session, career_id: int) -> list[dict]:
+    """Read active catalog requirements without user state, scoring or writes."""
+    with session.no_autoflush:
+        if session.get(Career, career_id) is None:
+            raise CareerNotFoundError(f"Career {career_id} was not found")
+        rows = session.execute(
+            select(Skill.id, Skill.name, CareerSkillRequirement.required_level,
+                   CareerSkillRequirement.importance)
+            .join(CareerSkillRequirement, CareerSkillRequirement.skill_id == Skill.id)
+            .where(CareerSkillRequirement.career_id == career_id,
+                   CareerSkillRequirement.required_level > 0,
+                   CareerSkillRequirement.importance > 0)
+            .order_by(Skill.id)
+        )
+        return [dict(skill_id=row.id, name=row.name, required_level=row.required_level,
+                     importance=row.importance) for row in rows]
