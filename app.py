@@ -58,7 +58,7 @@ with st.container(key="cc-public-landing"):
         with hero_art:
             st.image(
                 ASSET / "Peopleoncompass.png",
-                alt="People following a compass toward their career goals",
+                
                 width="stretch",
             )
 
