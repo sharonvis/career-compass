@@ -60,6 +60,36 @@ def get_user_profile(session: Session, user_id: int) -> dict:
         return _profile(session, _get_user(session, user_id))
 
 
+def update_user_profile(session: Session, user_id: int, *, name=None, degree=None,
+                        branch=None, year_of_study=None) -> dict:
+    """Update supported profile fields; validate first and let the caller commit."""
+    with session.no_autoflush:
+        user = _get_user(session, user_id)
+        fields = {}
+        for field, value in (("name", name), ("degree", degree), ("branch", branch)):
+            if value is not None:
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"{field} must not be blank and must be text")
+                fields[field] = value.strip()
+        if year_of_study is not None:
+            if type(year_of_study) is not int or not 1 <= year_of_study <= 4:
+                raise ValueError("year_of_study must be an integer from 1 to 4")
+            fields["year_of_study"] = year_of_study
+        for field, value in fields.items():
+            if getattr(user, field) != value:
+                setattr(user, field, value)
+    session.flush()
+    with session.no_autoflush:
+        return _profile(session, user)
+
+
+def list_skills(session: Session) -> list[dict]:
+    """Read the full catalog, including skills outside the current career."""
+    with session.no_autoflush:
+        return [dict(skill_id=skill.id, name=skill.name)
+                for skill in session.scalars(select(Skill).order_by(Skill.id))]
+
+
 def list_careers(session: Session) -> list[dict]:
     """Return the catalog in career ID order, without readiness calculations."""
     with session.no_autoflush:

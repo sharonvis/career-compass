@@ -13,6 +13,7 @@ NAV_ITEMS = (
     ("Roadmap", "pages/Roadmap.py", "route"),
     ("Opportunities", "pages/Opportunities.py", "work"),
     ("Applications", "pages/Applications.py", "description"),
+    ("Evidence", "pages/Evidence.py", "badge"),
     ("Settings", "pages/Settings.py", "settings"),
 )
 
