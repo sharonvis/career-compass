@@ -72,6 +72,80 @@ def _assessment_questions(skill_name: str, form_name: str) -> list[dict]:
     return questions
 
 
+def list_supported_assessments() -> list[dict]:
+    """Expose configured skills/forms only, never question answers."""
+    return [
+        dict(skill_name="SQL", forms=sorted({q["form"] for q in SQL_QUESTIONS})),
+        dict(skill_name="Statistics", forms=sorted({q["question_id"].split("-")[1]
+                                                  for q in STATISTICS_QUESTIONS})),
+    ]
+
+
+def _supported_skill(skill_name):
+    if skill_name not in {item["skill_name"] for item in list_supported_assessments()}:
+        raise ValueError(f"Unsupported assessment skill '{skill_name}'")
+
+
+def get_next_assessment_form(session: Session, user_id: int, skill_name: str) -> str:
+    """SQL alternates using every persisted attempt; Statistics uses Form A."""
+    with session.no_autoflush:
+        _verify_user(session, user_id)
+        _supported_skill(skill_name)
+        skill = _get_skill(session, skill_name)
+        if skill_name == "Statistics":
+            return "A"
+        count = session.query(AssessmentAttempt).filter(
+            AssessmentAttempt.user_id == user_id,
+            AssessmentAttempt.skill_id == skill.id,
+        ).count()
+        return "A" if count % 2 == 0 else "B"
+
+
+def get_active_assessment_attempt(session: Session, user_id: int, skill_name: str) -> dict | None:
+    """Read the newest user-owned in-progress attempt without writes."""
+    with session.no_autoflush:
+        _verify_user(session, user_id)
+        _supported_skill(skill_name)
+        skill = _get_skill(session, skill_name)
+        attempt = session.query(AssessmentAttempt).filter(
+            AssessmentAttempt.user_id == user_id,
+            AssessmentAttempt.skill_id == skill.id,
+            AssessmentAttempt.status == "in_progress",
+        ).order_by(AssessmentAttempt.started_at.desc(), AssessmentAttempt.id.desc()).first()
+        return get_attempt(session, attempt.id) if attempt is not None else None
+
+
+def get_assessment_questions(session: Session, user_id: int, attempt_id: int) -> list[dict]:
+    """Allowlisted question payloads for an owned, in-progress attempt.
+
+    SQL schemas contain column names only, not hidden rows or reference SQL.
+    Every nested container returned here is new and safe to change in the UI.
+    """
+    with session.no_autoflush:
+        _verify_user(session, user_id)
+        attempt = get_attempt(session, attempt_id)
+        if attempt["user_id"] != user_id:
+            raise ValueError("Assessment attempt is not available to this user")
+        if attempt["status"] != "in_progress":
+            raise ValueError("Questions are available only for an in-progress attempt")
+        questions = _assessment_questions(attempt["skill_name"], attempt["form_name"])
+        result = []
+        for question in questions:
+            safe = dict(question_id=question["question_id"], topic=question["topic"],
+                        difficulty=question["difficulty"])
+            if attempt["skill_name"] == "SQL":
+                dataset = SQL_DATASETS[question["dataset_id"]]
+                safe.update(prompt=question["prompt"], input_type="sql",
+                            dataset_id=question["dataset_id"],
+                            schema=[dict(table=table, columns=list(rows[0]) if rows else [])
+                                    for table, rows in dataset.items()])
+            else:
+                safe.update(prompt=question["question"], input_type="multiple_choice",
+                            options=list(question["options"]))
+            result.append(safe)
+        return result
+
+
 def start_assessment(session: Session, user_id: int, skill_name: str, form_name: str) -> dict:
     """
     Create a new in-progress assessment attempt.
@@ -97,7 +171,7 @@ def start_assessment(session: Session, user_id: int, skill_name: str, form_name:
             )
             .count()
         )
-        expected_form = "A" if prior_attempt_count % 2 == 0 else "B"
+        expected_form = get_next_assessment_form(session, user_id, skill.name)
         if form_name != expected_form:
             raise ValueError(
                 f"SQL Form {expected_form} is required for attempt "

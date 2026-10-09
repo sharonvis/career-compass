@@ -4,7 +4,7 @@ from html import escape
 import streamlit as st
 
 from database.db import SessionLocal, session_scope
-from services import career_service, user_service
+from services import assessment_service, career_service, user_service
 from ui.components.sidebar import render_sidebar
 
 LEVELS = ("Not Known", "Beginner", "Intermediate", "Advanced")
@@ -80,6 +80,7 @@ st.caption("Assessment coverage is weighted by career skill importance. Effectiv
 st.markdown('<p class="cc-section-kicker">CAREER REQUIREMENTS</p><h2 class="cc-section-title">Core skills</h2>', unsafe_allow_html=True)
 st.caption(f"{len(summary['skills'])} required skills")
 with st.container(key="cc-card-career-skills"):
+    supported = {item["skill_name"] for item in assessment_service.list_supported_assessments()}
     for skill in summary["skills"]:
         columns = st.columns([1.5, 1, 1.15, .8, .65], gap="small", vertical_alignment="center")
         with columns[0]:
@@ -100,10 +101,12 @@ with st.container(key="cc-card-career-skills"):
             for prerequisite in skill["prerequisites"]:
                 st.caption(f"Requires {prerequisite['skill_name']}: {LEVELS[prerequisite['minimum_level']]}")
         with columns[4]:
-            if skill["assessable"]:
-                st.button("Assess" if demonstrated is None else "Review assessment", disabled=True,
-                          key=f"career_skill_{skill['skill_id']}", width="stretch")
-                st.caption("Assessment UI coming in the next integration block.")
+            if skill["assessable"] and skill["name"] in supported:
+                if st.button("Assess" if demonstrated is None else "Reassess",
+                             key=f"career_skill_{skill['skill_id']}", width="stretch"):
+                    st.session_state["assessment_skill"] = skill["name"]
+                    st.session_state.pop("assessment_attempt_id", None)
+                    st.switch_page("pages/Assessment.py")
             else:
                 st.caption("Assessment not available for this skill.")
         st.markdown('<div class="cc-divider" style="margin:8px 0"></div>', unsafe_allow_html=True)

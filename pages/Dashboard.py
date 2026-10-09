@@ -4,7 +4,7 @@ from html import escape
 import streamlit as st
 
 from database.db import SessionLocal
-from services import (application_service, career_service, opportunity_service,
+from services import (application_service, assessment_service, career_service, opportunity_service,
                       progress_service, roadmap_service, user_service)
 from ui.components.sidebar import render_sidebar
 
@@ -52,8 +52,14 @@ with hero_action:
             st.markdown(f'<h2 class="cc-dashboard-hero-title">{escape(action["action_type"].capitalize())} '
                         f'{escape(action["skill_name"])}</h2>', unsafe_allow_html=True)
             if action["action_type"] == "assess":
-                st.button("Start Assessment", disabled=True, key="dashboard_start_assessment")
-                st.caption("Assessment UI is coming in the next integration block.")
+                supported = {item["skill_name"] for item in assessment_service.list_supported_assessments()}
+                if action["skill_name"] in supported:
+                    if st.button("Start Assessment", key="dashboard_start_assessment"):
+                        st.session_state["assessment_skill"] = action["skill_name"]
+                        st.session_state.pop("assessment_attempt_id", None)
+                        st.switch_page("pages/Assessment.py")
+                else:
+                    st.caption("Assessment is not available for this skill.")
             elif action["action_type"] in {"improve", "learn"}:
                 st.caption("See the current roadmap preview below for learning guidance.")
 with target_career:

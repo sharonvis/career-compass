@@ -495,3 +495,125 @@ def test_completion_scores_from_persisted_answer_records():
     finally:
         session.rollback()
         session.close()
+# UI-facing contracts use isolated SQLite, independently of legacy fixtures above.
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+from database import db, models as m
+from services import assessment_service as service, user_service
+from unittest.mock import Mock
+
+
+@pytest.fixture
+def assessment_store(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'assessment_contracts.db'}")
+    db.configure_sqlite_foreign_keys(engine)
+    db.Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        seed_database(session)
+        first = user_service.create_user(session, "First", "first@example.com", "BSc", "CS", 1)
+        second = user_service.create_user(session, "Second", "second@example.com", "BSc", "CS", 1)
+        session.commit()
+        yield session, first["user_id"], second["user_id"]
+    engine.dispose()
+
+
+def test_supported_metadata_is_configured_and_fresh():
+    expected = [{"skill_name": "SQL", "forms": ["A", "B"]}, {"skill_name": "Statistics", "forms": ["A"]}]
+    assert service.list_supported_assessments() == expected
+    changed = service.list_supported_assessments()
+    changed[0]["forms"].clear()
+    assert service.list_supported_assessments() == expected
+
+
+@pytest.mark.parametrize("status", ["in_progress", "completed", "abandoned"])
+def test_next_sql_form_counts_all_attempts(assessment_store, status):
+    session, uid, _ = assessment_store
+    assert service.get_next_assessment_form(session, uid, "SQL") == "A"
+    attempt = service.start_assessment(session, uid, "SQL", "A")
+    row = session.get(m.AssessmentAttempt, attempt["attempt_id"])
+    row.status = status
+    if status == "completed":
+        from datetime import datetime, timezone
+        row.resulting_level = 1
+        row.completed_at = datetime.now(timezone.utc)
+    session.flush()
+    assert service.get_next_assessment_form(session, uid, "SQL") == "B"
+    service.start_assessment(session, uid, "SQL", "B")
+    assert service.get_next_assessment_form(session, uid, "SQL") == "A"
+
+
+def test_statistics_next_form_stays_a(assessment_store):
+    session, uid, _ = assessment_store
+    assert service.get_next_assessment_form(session, uid, "Statistics") == "A"
+    service.start_assessment(session, uid, "Statistics", "A")
+    assert service.get_next_assessment_form(session, uid, "Statistics") == "A"
+
+
+@pytest.mark.parametrize("helper", [service.get_next_assessment_form, service.get_active_assessment_attempt])
+def test_helpers_reject_unsupported_skills(assessment_store, helper):
+    session, uid, _ = assessment_store
+    with pytest.raises(ValueError, match="Unsupported assessment"):
+        helper(session, uid, "Python")
+
+
+def test_active_attempt_is_newest_and_owned(assessment_store):
+    session, uid, other = assessment_store
+    assert service.get_active_assessment_attempt(session, uid, "SQL") is None
+    first = service.start_assessment(session, uid, "SQL", "A")
+    second = service.start_assessment(session, uid, "SQL", "B")
+    assert service.get_active_assessment_attempt(session, uid, "SQL")["attempt_id"] == second["attempt_id"]
+    assert service.get_active_assessment_attempt(session, other, "SQL") is None
+    record_form_answers(session, second["attempt_id"], "SQL", "B")
+    service.complete_assessment(session, second["attempt_id"])
+    assert service.get_active_assessment_attempt(session, uid, "SQL")["attempt_id"] == first["attempt_id"]
+    record_form_answers(session, first["attempt_id"], "SQL", "A")
+    service.complete_assessment(session, first["attempt_id"])
+    assert service.get_active_assessment_attempt(session, uid, "SQL") is None
+
+
+@pytest.mark.parametrize("skill,form", [("SQL", "A"), ("SQL", "B"), ("Statistics", "A")])
+def test_question_payload_allowlist_and_freshness(assessment_store, skill, form):
+    session, uid, _ = assessment_store
+    if form == "B":
+        service.start_assessment(session, uid, "SQL", "A")
+    attempt = service.start_assessment(session, uid, skill, form)
+    questions = service.get_assessment_questions(session, uid, attempt["attempt_id"])
+    assert len(questions) == 8
+    common = {"question_id", "prompt", "topic", "difficulty", "input_type"}
+    for question in questions:
+        if skill == "SQL":
+            assert set(question) == common | {"dataset_id", "schema"}
+            assert question["input_type"] == "sql"
+            assert all(set(table) == {"table", "columns"} for table in question["schema"])
+            assert all(isinstance(col, str) for table in question["schema"] for col in table["columns"])
+            question["schema"][0]["columns"].clear()
+        else:
+            assert set(question) == common | {"options"}
+            bank = next(q for q in STATISTICS_QUESTIONS if q["question_id"] == question["question_id"])
+            assert question["options"] == bank["options"]
+            question["options"].clear()
+    again = service.get_assessment_questions(session, uid, attempt["attempt_id"])
+    assert all(q["schema"][0]["columns"] for q in again) if skill == "SQL" else all(q["options"] for q in again)
+
+
+def test_question_access_rejects_wrong_owner_completed_missing(assessment_store):
+    session, uid, other = assessment_store
+    attempt = service.start_assessment(session, uid, "Statistics", "A")
+    with pytest.raises(ValueError, match="not available"):
+        service.get_assessment_questions(session, other, attempt["attempt_id"])
+    with pytest.raises(ValueError, match="not found"):
+        service.get_assessment_questions(session, uid, 99999)
+    record_form_answers(session, attempt["attempt_id"], "Statistics", "A")
+    service.complete_assessment(session, attempt["attempt_id"])
+    with pytest.raises(ValueError, match="in-progress"):
+        service.get_assessment_questions(session, uid, attempt["attempt_id"])
+
+
+def test_ui_read_helpers_never_flush_commit_or_write(assessment_store, monkeypatch):
+    session, uid, _ = assessment_store
+    attempt = service.start_assessment(session, uid, "SQL", "A")
+    for method in ("flush", "commit", "add"):
+        monkeypatch.setattr(session, method, Mock(side_effect=AssertionError(method)))
+    assert service.get_next_assessment_form(session, uid, "SQL") == "B"
+    assert service.get_active_assessment_attempt(session, uid, "SQL")
+    assert service.get_assessment_questions(session, uid, attempt["attempt_id"])

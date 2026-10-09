@@ -1,4 +1,4 @@
-﻿"""Dashboard/My Career UI integration against isolated SQLite."""
+"""Dashboard/My Career UI integration against isolated SQLite."""
 import ast
 from datetime import datetime, timezone
 from pathlib import Path
@@ -140,8 +140,8 @@ def test_next_action_uses_service_only(store, monkeypatch, action_type):
     else:
         assert f"{action_type.capitalize()} Catalog action sentinel" in text(at)
     if action_type == "assess":
-        assert at.button(key="dashboard_start_assessment").disabled
-        assert "next integration block" in text(at)
+        assert not any(b.key == "dashboard_start_assessment" for b in at.button)
+        assert "not available" in text(at)
 
 
 def test_dashboard_empty_states(store, monkeypatch):
@@ -193,7 +193,7 @@ def test_career_real_requirements_evidence_and_prerequisites(store):
     assert f"Latest completed attempt: #{store['attempt_id']}" in displayed
     assert "Blocked by prerequisites" in displayed
     assert len(at.button) == 3  # Change career plus only SQL/Statistics assessment actions.
-    assert all(button.disabled for button in at.button if button.label != "Change career")
+    assert all(not button.disabled for button in at.button if button.label != "Change career")
 
 
 def test_career_switch_persists_and_dashboard_refreshes(store):
