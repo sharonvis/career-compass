@@ -458,3 +458,79 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {
   .stApp:has(.st-key-cc-public-landing) .st-key-landing-bottom-cta strong { font-size: 18px; }
   .stApp:has(.st-key-cc-public-landing) .product-decor { width: 130px; top: 90px; right: -15px; }
 }
+
+/* Desktop landing proportions; keep all adjustments inside the public shell. */
+[data-testid="stAppDeployButton"] { display: none !important; }
+.stApp:has(.st-key-cc-public-landing),
+.stApp:has(.st-key-cc-public-landing) [data-testid="stAppViewContainer"] { background: var(--cc-cream) !important; }
+.stApp:has(.st-key-cc-public-landing) [data-testid="stHeader"],
+.stApp:has(.st-key-cc-public-landing) [data-testid="stToolbar"],
+.stApp:has(.st-key-cc-public-landing) [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+.stApp:has(.st-key-cc-public-landing) .block-container,
+.stApp:has(.st-key-cc-public-landing) [data-testid="stMainBlockContainer"] {
+  width: 100%; max-width: 1200px; margin-inline: auto; padding: 0 36px 40px !important;
+}
+.stApp:has(.st-key-cc-public-landing) .topbar { height: 76px; border-color: var(--cc-line); }
+.stApp:has(.st-key-cc-public-landing) .topbar .brand { font-size: 18px; }
+.stApp:has(.st-key-cc-public-landing) .topbar nav { gap: 32px; }
+.stApp:has(.st-key-cc-public-landing) .topbar .signin { padding: 10px 26px; }
+.stApp:has(.st-key-cc-public-landing) .st-key-landing-hero,
+.stApp:has(.st-key-cc-public-landing) .st-key-landing-hero > [data-testid="stVerticalBlock"] { min-height: 430px; }
+.stApp:has(.st-key-cc-public-landing) .st-key-landing-hero { padding-block: 28px; }
+.stApp:has(.st-key-cc-public-landing) .hero-copy { max-width: 660px; padding: 14px 0 8px; }
+.stApp:has(.st-key-cc-public-landing) h1 { font-size: clamp(38px, 3.4vw, 52px); line-height: 1.14; letter-spacing: -1px; margin-bottom: 20px; }
+.stApp:has(.st-key-cc-public-landing) .hero-copy > p { max-width: 550px; font-size: 16px; line-height: 1.65; margin-bottom: 18px; }
+.stApp:has(.st-key-cc-public-landing) .desktop { display: none; }
+.stApp:has(.st-key-cc-public-landing) .st-key-landing-hero [data-testid="stImage"] img { width: min(100%, 370px); max-height: 350px; object-fit: contain; }
+.stApp:has(.st-key-cc-public-landing) .eyebrow { margin-bottom: 16px; font-size: 11px; }
+.stApp:has(.st-key-cc-public-landing) .features { padding: 24px 0 20px; }
+.stApp:has(.st-key-cc-public-landing) .feature-grid { gap: 24px; }
+.stApp:has(.st-key-cc-public-landing) .feature-card { height: 260px; padding: 22px; border-radius: 17px; box-shadow: 0 4px 0 #171717; }
+.stApp:has(.st-key-cc-public-landing) .feature-card h3 { font-size: 21px; margin-bottom: 12px; }
+.stApp:has(.st-key-cc-public-landing) .feature-card p { font-size: 15px; line-height: 1.5; }
+.stApp:has(.st-key-cc-public-landing) .feature-card p br { display: none; }
+.stApp:has(.st-key-cc-public-landing) .feature-card img { width: 160px; height: 115px; bottom: 12px; }
+.stApp:has(.st-key-cc-public-landing) .how { padding: 56px 0; }
+.stApp:has(.st-key-cc-public-landing) h2 { font-size: 32px; margin-bottom: 24px; }
+.stApp:has(.st-key-cc-public-landing) .steps details { min-height: 64px; padding: 16px 22px; border-radius: 13px; box-shadow: 0 3px 0 #171717; }
+.stApp:has(.st-key-cc-public-landing) .steps summary { font-size: 18px; }
+.stApp:has(.st-key-cc-public-landing) .product { padding-top: 8px; }
+.stApp:has(.st-key-cc-public-landing) .product-decor { width: 150px; right: 0; top: 110px; }
+.stApp:has(.st-key-cc-public-landing) .dashboard { min-height: 240px; grid-template-columns: 180px 1.3fr 1fr; }
+.stApp:has(.st-key-cc-public-landing) .dashboard aside strong { font-size: 20px; }
+.stApp:has(.st-key-cc-public-landing) .dashboard-main { padding: 24px; }
+.stApp:has(.st-key-cc-public-landing) .stats { gap: 20px; padding: 28px 20px; }
+.stApp:has(.st-key-cc-public-landing) .st-key-landing-bottom-cta { margin-top: 40px; padding: 18px 24px; }
+.stApp:has(.st-key-cc-public-landing) :is(#how, #about, #start) { scroll-margin-top: 24px; }
+.stApp:has(.st-key-cc-public-landing) .topbar a:focus-visible { outline: 3px solid var(--cc-coral); outline-offset: 5px; border-radius: 4px; }
+@media (max-width: 900px) {
+  .stApp:has(.st-key-cc-public-landing) [data-testid="stMainBlockContainer"] { padding-inline: 24px !important; }
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero,
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero > [data-testid="stVerticalBlock"] { min-height: 360px; }
+  .stApp:has(.st-key-cc-public-landing) .feature-grid { gap: 16px; }
+  .stApp:has(.st-key-cc-public-landing) .feature-card { padding: 18px; height: 270px; }
+  .stApp:has(.st-key-cc-public-landing) .dashboard { grid-template-columns: 140px 1fr 1fr; }
+  .stApp:has(.st-key-cc-public-landing) .stats { grid-template-columns: 1fr; }
+  .stApp:has(.st-key-cc-public-landing) .stats div:last-child { grid-column: auto; }
+}
+@media (max-width: 650px) {
+  .stApp:has(.st-key-cc-public-landing) [data-testid="stMainBlockContainer"] { padding-inline: 20px !important; }
+  .stApp:has(.st-key-cc-public-landing) .topbar { height: auto; min-height: 104px; flex-wrap: wrap; gap: 12px; padding-block: 16px; }
+  .stApp:has(.st-key-cc-public-landing) .topbar nav { width: 100%; justify-content: space-between; gap: 12px; }
+  .stApp:has(.st-key-cc-public-landing) .topbar nav a:not(.signin) { display: inline; }
+  .stApp:has(.st-key-cc-public-landing) .topbar a { font-size: 13px; }
+  .stApp:has(.st-key-cc-public-landing) .topbar .signin { padding: 8px 16px; }
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero,
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero > [data-testid="stVerticalBlock"] { min-height: 0; }
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero [data-testid="stColumn"],
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-bottom-cta [data-testid="stColumn"] { width: 100% !important; flex: 1 1 100%; }
+  .stApp:has(.st-key-cc-public-landing) h1 { font-size: clamp(32px, 7.5vw, 42px); }
+  .stApp:has(.st-key-cc-public-landing) .st-key-landing-hero [data-testid="stImage"] img { max-height: 270px; }
+  .stApp:has(.st-key-cc-public-landing) .feature-grid { grid-template-columns: 1fr; gap: 24px; }
+  .stApp:has(.st-key-cc-public-landing) .feature-card { height: 250px; }
+  .stApp:has(.st-key-cc-public-landing) .how { padding-block: 44px; }
+  .stApp:has(.st-key-cc-public-landing) h2 { font-size: 28px; }
+  .stApp:has(.st-key-cc-public-landing) .dashboard { grid-template-columns: 1fr; }
+  .stApp:has(.st-key-cc-public-landing) .stats { grid-template-columns: 1fr 1fr; }
+  .stApp:has(.st-key-cc-public-landing) .stats div:last-child { grid-column: span 2; }
+}

@@ -3,9 +3,8 @@
 import base64
 import re
 
-from sqlalchemy.exc import SQLAlchemyError
-from database.db import SessionLocal, init_db, session_scope
-from database.seed import seed_database
+from database.db import SessionLocal, session_scope
+from database.startup import ensure_local_catalog
 from services import user_service
 from services.career_service import get_user_skill_states
 from pathlib import Path
@@ -52,25 +51,6 @@ def _validate_submission(profile, career_id, skills, claims, careers):
             raise ValueError(f"Choose a level from 0 to 3 for {skill['name']}.")
 
 
-st.session_state.setdefault("onboarding_claims", {})
-try:
-    with SessionLocal() as session:
-        careers = user_service.list_careers(session)
-except SQLAlchemyError:
-    careers = []
-if not careers:
-    st.info("The career catalog is not ready. Initialize the local database to continue.")
-    if st.button("Initialize local database", key="initialize_onboarding_database"):
-        try:
-            init_db()
-            with session_scope() as session:
-                seed_database(session)
-        except Exception:
-            st.error("Database setup failed. Check local database access and try again.")
-        else:
-            st.rerun()
-    st.stop()
-
 ROOT = Path(__file__).resolve().parents[1]
 css = (ROOT / "assets" / "onboarding.css").read_text(encoding="utf-8")
 logo_path = ROOT / "assets" / "images" / "CareerCompassLogo.png"
@@ -78,6 +58,16 @@ logo = base64.b64encode(logo_path.read_bytes()).decode("ascii")
 
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 st.markdown('<div class="cc-onboarding-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+st.session_state.setdefault("onboarding_claims", {})
+try:
+    ensure_local_catalog()
+    with SessionLocal() as session:
+        careers = user_service.list_careers(session)
+except Exception:
+    st.error("We couldn't get your onboarding ready. Please try again in a moment.")
+    if st.button("Try again", key="retry_onboarding_startup"):
+        st.rerun()
+    st.stop()
 st.markdown(
     f"""
     <div class="cc-onboarding-topbar">

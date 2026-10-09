@@ -206,7 +206,7 @@ def test_invalid_non_widget_values_rejected_before_writes(isolated, kind):
         assert session.scalar(select(func.count()).select_from(m.User)) == 0
 
 
-def test_explicit_initialization_only_when_requested(isolated, monkeypatch):
+def test_automatic_initialization_only_when_missing(isolated, monkeypatch):
     engine, factory = isolated
     db.Base.metadata.drop_all(engine)
     import database.seed as seed
@@ -218,8 +218,8 @@ def test_explicit_initialization_only_when_requested(isolated, monkeypatch):
     monkeypatch.setattr(seed, "seed_database", tracked)
     monkeypatch.setattr(db, "init_db", lambda: db.Base.metadata.create_all(engine))
     at = page()
-    assert not at.exception and calls == []
-    at.button(key="initialize_onboarding_database").click().run()
     assert not at.exception and calls == [1]
+    assert at.text_input(key="onboarding_email")
+    assert not any(b.key == "initialize_onboarding_database" for b in at.button)
     at.run()
     assert calls == [1]

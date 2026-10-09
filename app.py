@@ -28,8 +28,8 @@ with st.container(key="cc-public-landing"):
     st.markdown(
         f"""
         <header id="top" class="topbar">
-          <a class="brand" href="#top"><img src="{image_uri('CareerCompassLogo.png')}" alt=""><span>CAREER COMPASS</span></a>
-          <nav><a href="#how">How It Works</a><a href="#about">About</a><a class="signin" href="#start">Sign In</a></nav>
+          <a class="brand" href="#top" target="_self"><img src="{image_uri('CareerCompassLogo.png')}" alt=""><span>CAREER COMPASS</span></a>
+          <nav aria-label="Main navigation"><a href="#how" target="_self">How It Works</a><a href="#about" target="_self">About</a><a class="signin" href="#start" target="_self">Sign In</a></nav>
         </header>
         """,
         unsafe_allow_html=True,
