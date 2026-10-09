@@ -1,52 +1,109 @@
-"""Career detail and skill progress, using static sample data."""
+﻿"""Career requirements and user evidence read from backend summaries."""
+from html import escape
 
 import streamlit as st
 
-from ui.components.header import render_header
+from database.db import SessionLocal, session_scope
+from services import career_service, user_service
 from ui.components.sidebar import render_sidebar
 
-st.set_page_config(page_title="My Career · Career Compass", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
+LEVELS = ("Not Known", "Beginner", "Intermediate", "Advanced")
+st.set_page_config(page_title="My Career · Career Compass", page_icon="🧭",
+                   layout="wide", initial_sidebar_state="expanded")
 render_sidebar("My Career")
-render_header("My Career", "Explore the skills for your target career and track your progress.", "YOUR CAREER COMPASS")
+user_id = st.session_state.get("user_id")
+if type(user_id) is not int:
+    st.info("Complete onboarding to load your career profile.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
 
-top_left, top_right = st.columns([1, 0.35], vertical_alignment="center")
+try:
+    with SessionLocal() as session:
+        profile = user_service.get_user_profile(session, user_id)
+        careers = user_service.list_careers(session)
+        career_id = profile["target_career_id"]
+        summary = career_service.get_user_career_summary(session, user_id, career_id) if career_id is not None else None
+except Exception:
+    st.error("Could not load your career profile. Check your profile and database, then try again.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
+
+st.markdown('<p class="cc-header-eyebrow">YOUR CAREER COMPASS</p>'
+            '<h1 class="cc-header-title">My Career</h1>'
+            f'<p class="cc-header-subtitle">{escape(profile["name"])}, explore your career requirements and progress.</p>',
+            unsafe_allow_html=True)
+catalog = {career["career_id"]: career for career in careers}
+if not catalog:
+    st.info("No careers are available. Return to Onboarding to set up the catalog.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
+
+top_left, top_right = st.columns([1, .35], vertical_alignment="center")
 with top_left:
-    st.markdown('<h2 class="cc-section-title" style="font-size:30px">Data Analyst</h2>', unsafe_allow_html=True)
-    st.markdown('<p class="cc-section-copy">Turn data into useful insights that help solve real world problems.</p>', unsafe_allow_html=True)
+    st.markdown(f'<h2 class="cc-section-title" style="font-size:30px">{escape(profile["target_career_name"] or "Choose a target career")}</h2>', unsafe_allow_html=True)
+    description = catalog.get(career_id, {}).get("description")
+    if description:
+        st.markdown(f'<p class="cc-section-copy">{escape(description)}</p>', unsafe_allow_html=True)
 with top_right:
-    st.button("Change career", icon=":material/swap_horiz:", key="change_career", width="stretch")
+    with st.form("career_switch"):
+        selected_id = st.selectbox("Target career", list(catalog),
+                                   index=list(catalog).index(career_id) if career_id in catalog else 0,
+                                   format_func=lambda value: catalog[value]["name"], key="career_switch_id")
+        change = st.form_submit_button("Change career", icon=":material/swap_horiz:", width="stretch")
+    if change:
+        try:
+            with session_scope() as session:
+                available = {career["career_id"] for career in user_service.list_careers(session)}
+                if selected_id not in available:
+                    raise ValueError("Select an available career.")
+                user_service.set_target_career(session, user_id, selected_id)
+        except Exception:
+            st.error("Could not change career. No changes were saved. Please try again.")
+        else:
+            st.rerun()
+
+if summary is None:
+    st.info("Choose a target career above to see your requirements.")
+    st.stop()
 
 st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-overview, skills_count, progress = st.columns(3, gap="medium")
-with overview:
-    with st.container(key="cc-card-career-overview"):
-        st.markdown('<p class="cc-stat-label">CAREER OVERVIEW</p><p class="cc-section-copy">Data analysts collect, clean, and interpret information to support better decisions.</p>', unsafe_allow_html=True)
-with skills_count:
-    with st.container(key="cc-card-career-count"):
-        st.markdown('<p class="cc-stat-label">KEY SKILLS</p><div class="cc-stat-value">6</div><p class="cc-stat-foot">to focus on</p>', unsafe_allow_html=True)
-with progress:
-    with st.container(key="cc-card-career-progress"):
-        st.markdown('<p class="cc-stat-label">ASSESSMENT COVERAGE</p><div class="cc-stat-value">2 of 6</div><p class="cc-stat-foot">skills assessed</p>', unsafe_allow_html=True)
-
-st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-st.markdown('<p class="cc-section-kicker">CAREER REQUIREMENTS</p><h2 class="cc-section-title">Core skills</h2><p class="cc-section-copy">See where you are today and which skills could use more practice.</p>', unsafe_allow_html=True)
-st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+for column, label, value, key in zip(
+    st.columns(3, gap="medium"),
+    ("Claimed Readiness", "Effective Readiness", "Assessment Coverage"),
+    (summary["claimed_readiness"], summary["effective_readiness"], summary["assessment_coverage"]),
+    ("overview", "count", "progress"),
+):
+    with column:
+        with st.container(key=f"cc-card-career-{key}"):
+            st.metric(label, f"{value:.1%}")
+st.caption("Assessment coverage is weighted by career skill importance. Effective readiness includes discounted unassessed claims.")
+st.markdown('<p class="cc-section-kicker">CAREER REQUIREMENTS</p><h2 class="cc-section-title">Core skills</h2>', unsafe_allow_html=True)
+st.caption(f"{len(summary['skills'])} required skills")
 with st.container(key="cc-card-career-skills"):
-    header_columns = st.columns([1.5, 1, 1.15, .8, .65], gap="small")
-    for column, label in zip(header_columns, ("Skill", "Required", "Your level", "Status", "")):
-        with column:
-            st.markdown(f'<p class="cc-career-table-header">{label}</p>', unsafe_allow_html=True)
-    st.markdown('<div class="cc-divider" style="margin:0 0 8px"></div>', unsafe_allow_html=True)
-    skills = (("SQL", "Intermediate", "Beginner", "Gap", "Assess"), ("Python", "Intermediate", "Intermediate", "On track", "Review"), ("Statistics", "Intermediate", "Not assessed", "To assess", "Assess"), ("Data visualisation", "Beginner", "Not assessed", "To assess", "Assess"), ("Communication", "Intermediate", "Not assessed", "To assess", "Assess"))
-    for index, (name, required, level, status, action) in enumerate(skills):
-        cols = st.columns([1.5, 1, 1.15, .8, .65], gap="small", vertical_alignment="center")
-        with cols[0]:
-            st.markdown(f'<p class="cc-row-title">{index + 1:02d} &nbsp; {name}</p>', unsafe_allow_html=True)
-        with cols[1]: st.markdown(f'<span class="cc-chip">{required}</span>', unsafe_allow_html=True)
-        with cols[2]: st.markdown(f'<span class="cc-muted" style="font-size:12px">{level}</span>', unsafe_allow_html=True)
-        with cols[3]:
-            chip = "cc-chip-coral" if status == "Gap" else "cc-chip-green" if status == "On track" else ""
-            st.markdown(f'<div class="cc-career-status-cell"><span class="cc-chip {chip}">{status}</span></div>', unsafe_allow_html=True)
-        with cols[4]: st.button(action, key=f"career_skill_{index}", type="primary" if status == "Gap" else "secondary", width="stretch")
-        if index < len(skills) - 1:
-            st.markdown('<div class="cc-divider" style="margin:8px 0"></div>', unsafe_allow_html=True)
+    for skill in summary["skills"]:
+        columns = st.columns([1.5, 1, 1.15, .8, .65], gap="small", vertical_alignment="center")
+        with columns[0]:
+            st.markdown(f'<p class="cc-row-title">{escape(skill["name"])}</p>', unsafe_allow_html=True)
+            if skill["latest_attempt_id"] is not None:
+                st.caption(f"Latest completed attempt: #{skill['latest_attempt_id']}")
+        with columns[1]:
+            st.write(f"Required: {LEVELS[skill['required_level']]}")
+        with columns[2]:
+            st.write(f"Claimed: {LEVELS[skill['claimed_level']]}")
+            demonstrated = skill["demonstrated_level"]
+            label = "Not assessed" if demonstrated is None else "Not Demonstrated" if demonstrated == 0 else LEVELS[demonstrated]
+            st.write(f"Demonstrated: {label}")
+        with columns[3]:
+            st.write("Unassessed" if demonstrated is None else "Assessed")
+            st.caption("Confirmed gap: unknown" if skill["gap"] is None else f"Confirmed gap: {skill['gap']}")
+            st.caption("Prerequisites met" if skill["prerequisites_met"] else "Blocked by prerequisites")
+            for prerequisite in skill["prerequisites"]:
+                st.caption(f"Requires {prerequisite['skill_name']}: {LEVELS[prerequisite['minimum_level']]}")
+        with columns[4]:
+            if skill["assessable"]:
+                st.button("Assess" if demonstrated is None else "Review assessment", disabled=True,
+                          key=f"career_skill_{skill['skill_id']}", width="stretch")
+                st.caption("Assessment UI coming in the next integration block.")
+            else:
+                st.caption("Assessment not available for this skill.")
+        st.markdown('<div class="cc-divider" style="margin:8px 0"></div>', unsafe_allow_html=True)
