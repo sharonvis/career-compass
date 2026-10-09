@@ -1,44 +1,92 @@
-"""Static learning roadmap screen."""
+﻿"""Service-backed roadmap; manual completion is not assessment evidence."""
+from html import escape
 
 import streamlit as st
 
-from ui.components.header import render_header
+from database.db import SessionLocal, session_scope
+from services import assessment_service, roadmap_service, user_service
 from ui.components.sidebar import render_sidebar
 
-st.set_page_config(page_title="Roadmap · Career Compass", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Roadmap · Career Compass", page_icon="🧭",
+                   layout="wide", initial_sidebar_state="expanded")
 render_sidebar("Roadmap")
-render_header("Your roadmap", "A focused path from your current skills to your target career.", "LEARN WITH DIRECTION")
+st.markdown('<p class="cc-header-eyebrow">LEARN WITH DIRECTION</p>'
+            '<h1 class="cc-header-title">Your roadmap</h1>'
+            '<p class="cc-header-subtitle">A focused path from your current skills to your target career.</p>',
+            unsafe_allow_html=True)
+user_id = st.session_state.get("user_id")
+if type(user_id) is not int:
+    st.info("Complete onboarding to load your roadmap.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
+try:
+    with SessionLocal() as session:
+        profile = user_service.get_user_profile(session, user_id)
+        career_id = profile["target_career_id"]
+        items = roadmap_service.get_user_roadmap(session, user_id, career_id) if career_id is not None else []
+    supported = {item["skill_name"] for item in assessment_service.list_supported_assessments()}
+except Exception:
+    st.error("Could not load your roadmap. Check your profile and database, then try again.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
+if career_id is None:
+    st.info("Choose a target career in Onboarding to see your roadmap.")
+    st.page_link("pages/Onboarding.py", label="Go to Onboarding")
+    st.stop()
+with st.container(key="cc-card-roadmap-summary"):
+    st.subheader(profile["target_career_name"])
+    completed = sum(item["status"] == "completed" for item in items)
+    st.caption(f"{completed} of {len(items)} displayed items completed")
+    st.caption("Showing the service's current roadmap subset and relevant completion history.")
+    if items:
+        st.progress(completed / len(items))
+if not items:
+    st.info("No roadmap steps are currently returned for this career. Review your career profile for your latest progress.")
+elif completed == len(items):
+    st.success("All displayed roadmap items are complete.")
+st.page_link("pages/my_career.py", label="View My Career")
+st.page_link("pages/Dashboard.py", label="Return to Dashboard")
 
-st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-summary, target = st.columns([1.4, 1], gap="large")
-with summary:
-    with st.container(key="cc-card-roadmap-summary"):
-        st.markdown('<p class="cc-section-kicker">YOUR LEARNING PLAN</p><h2 class="cc-section-title">Data analyst foundations</h2><p class="cc-section-copy">A practical sequence built around your current skill profile.</p>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="cc-roadmap-progress-block">'
-            '<p class="cc-roadmap-progress-label">2 of 6 steps complete</p>'
-            '<div class="cc-roadmap-progress-track"><div class="cc-roadmap-progress-fill"></div></div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-with target:
-    with st.container(key="cc-card-roadmap-target"):
-        st.markdown('<p class="cc-stat-label">ESTIMATED PACE</p><div class="cc-stat-value">4 weeks</div><p class="cc-stat-foot">About 3 hours per week</p>', unsafe_allow_html=True)
-
-st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-st.markdown('<p class="cc-section-kicker">YOUR NEXT STEPS</p><h2 class="cc-section-title">Keep the momentum going.</h2>', unsafe_allow_html=True)
-steps = (
-    ("01", "Assess your SQL level", "Complete a short check of queries, joins, and filtering.", "Completed", "cc-chip-green", "check_circle"),
-    ("02", "Practice SQL joins", "Work through a small dataset and combine related tables.", "In progress", "cc-chip-coral", "play_circle"),
-    ("03", "Explore a dataset with Python", "Load, clean, and summarize a dataset with pandas.", "Up next", "", "radio_button_unchecked"),
-    ("04", "Review statistics essentials", "Refresh distributions, averages, and variation.", "Planned", "", "radio_button_unchecked"),
-)
-for number, title, detail, status, chip, icon in steps:
-    with st.container(key=f"cc-card-roadmap-step-{number}"):
-        icon_col, text_col, status_col = st.columns([.12, 1, .35], vertical_alignment="center")
-        with icon_col:
-            st.markdown(f'<span class="material-symbols-rounded" style="font-size:25px;color:{"#51836e" if status == "Completed" else "#f25534" if status == "In progress" else "#aaa39c"}">{icon}</span>', unsafe_allow_html=True)
-        with text_col:
-            st.markdown(f'<p class="cc-row-title">{number} &nbsp; {title}</p><p class="cc-section-copy">{detail}</p>', unsafe_allow_html=True)
-        with status_col:
-            st.markdown(f'<span class="cc-chip {chip}">{status}</span>', unsafe_allow_html=True)
+for item in items:
+    key = item["item_key"]
+    action = item["action_type"]
+    with st.container(key=f"cc-card-roadmap-{key}"):
+        st.markdown(f'<h3 class="cc-row-title">{escape(item["title"])}</h3>', unsafe_allow_html=True)
+        st.write(item["reason"])
+        st.caption(f"{item['skill_name']} · Action: {action} · Status: {item['status']}")
+        st.caption(f"Item key: {key}")
+        if item.get("latest_attempt_id") is not None:
+            st.caption(f"Related assessment attempt: {item['latest_attempt_id']}")
+        locked = item["status"] == "locked" or not item["prerequisites_met"]
+        if locked:
+            st.caption("Complete the prerequisites before starting this step.")
+        if action in ("assess", "reassess"):
+            if item["skill_name"] in supported and item["status"] != "completed":
+                if st.button(item["title"], key=f"roadmap_assess_{key}", disabled=locked):
+                    st.session_state["assessment_skill"] = item["skill_name"]
+                    st.session_state.pop("assessment_attempt_id", None)
+                    st.switch_page("pages/Assessment.py")
+            elif item["skill_name"] not in supported:
+                st.caption("An assessment is not available for this skill yet.")
+        elif action in ("improve", "learn"):
+            reopen = item["status"] == "completed"
+            if st.button("Reopen" if reopen else "Mark complete", key=f"roadmap_toggle_{key}",
+                         disabled=locked and not reopen):
+                try:
+                    with session_scope() as session:
+                        current_profile = user_service.get_user_profile(session, user_id)
+                        if current_profile["target_career_id"] != career_id:
+                            raise ValueError("Your target career changed. Reload your roadmap.")
+                        current_items = roadmap_service.get_user_roadmap(session, user_id, career_id)
+                        current = next((row for row in current_items if row["item_key"] == key), None)
+                        if (current is None or current["action_type"] not in ("improve", "learn")
+                                or (current["status"] == "completed") != reopen
+                                or (not reopen and (current["status"] == "locked" or not current["prerequisites_met"]))):
+                            raise ValueError("This step changed. Reload your roadmap.")
+                        mutation = (roadmap_service.mark_roadmap_item_incomplete if reopen
+                                    else roadmap_service.mark_roadmap_item_completed)
+                        mutation(session, user_id, key)
+                except Exception:
+                    st.error("Could not save this roadmap change. No changes were saved. Reload the page and try again.")
+                else:
+                    st.rerun()
