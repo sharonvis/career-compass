@@ -220,3 +220,4 @@ __marimo__/
 .streamlit/secrets.toml
 .tmp-db-check/
 .tmp-db-validation/
+data/career_compass.db
