@@ -1,4 +1,4 @@
-﻿"""Evidence, profile and identity UI integration using isolated SQLite."""
+"""Evidence, profile and identity UI integration using isolated SQLite."""
 import ast
 from datetime import date, timedelta
 from pathlib import Path
@@ -19,6 +19,8 @@ def store(tmp_path, monkeypatch):
     db.Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     monkeypatch.setattr(db, "SessionLocal", factory)
+    from services import evidence_storage_service
+    monkeypatch.setattr(evidence_storage_service, "STORAGE_ROOT", tmp_path / "uploads")
     with factory() as session:
         seed_database(session)
         uid = users.create_user(session, "Actual Student", "actual@example.com", "BSc", "CS", 2)["user_id"]
@@ -150,8 +152,8 @@ def test_wrong_owner_ui_and_service(store, monkeypatch):
         with db.session_scope() as concurrent:
             concurrent.get(m.Evidence, eid).user_id = store["other"]
         return original(session, uid, eid)
-    monkeypatch.setattr(evidence, "get_evidence", ownership_changed)
     at = page(store)
+    monkeypatch.setattr(evidence, "get_evidence", ownership_changed)
     click(at, "Delete evidence")
     assert at.error
     with store["factory"]() as session:
@@ -244,3 +246,72 @@ def test_architecture_and_real_empty_activity(store):
     dashboard = page(store, "Dashboard")
     assert "No recent activity yet" in text(dashboard)
     assert not events(store)
+
+
+# AppTest cannot set UploadedFile values directly; emulate only that widget's
+# return value while running the real page, SQLite services and storage helper.
+def test_evidence_uploader_and_download_delete(store, monkeypatch):
+    from io import BytesIO
+    import streamlit as st
+    from services import evidence_storage_service as storage
+    from test_evidence_storage_service import image_bytes
+    at = page(store)
+    assert len(at.get("file_uploader")) == 1
+    upload = BytesIO(image_bytes())
+    upload.name, upload.type = "certificate.png", "image/png"
+    monkeypatch.setattr(st, "file_uploader", lambda *a, **kw: upload)
+    downloads = []
+    original = st.download_button
+    def capture(*args, **kwargs):
+        downloads.append(kwargs)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(st, "download_button", capture)
+    at.run()
+    before = summary(store)
+    add(at, store)
+    row = read(store)[0]
+    assert downloads[-1]["data"] == upload.getvalue()
+    assert downloads[-1]["file_name"] == "certificate.png"
+    assert downloads[-1]["mime"] == "image/png"
+    assert len(at.get("download_button")) == 1
+    assert summary(store) == before
+    directory = storage.STORAGE_ROOT / str(store["uid"]) / str(row["evidence_id"])
+    click(at, "Delete evidence")
+    assert not directory.exists() and not read(store)
+
+
+def test_evidence_upload_duplicate_preserves_file(store, monkeypatch):
+    from io import BytesIO
+    import streamlit as st
+    from services import evidence_storage_service as storage
+    from test_evidence_storage_service import pdf_bytes, image_bytes
+    upload = BytesIO(pdf_bytes()); upload.name, upload.type = "first.pdf", "application/pdf"
+    monkeypatch.setattr(st, "file_uploader", lambda *a, **kw: upload)
+    at = page(store); add(at, store)
+    eid = read(store)[0]["evidence_id"]
+    upload = BytesIO(image_bytes()); upload.name, upload.type = "second.png", "image/png"
+    add(at, store)
+    assert at.error and len(read(store)) == 1
+    with store["factory"]() as session:
+        attachment = storage.get_attachment(session, store["uid"], eid)
+    assert attachment["data"] == pdf_bytes() and attachment["original_filename"] == "first.pdf"
+    assert len(events(store)) == 1
+
+
+@pytest.mark.parametrize("fail_activity", [False, True])
+def test_evidence_bad_upload_and_db_failure_leave_no_files(store, monkeypatch, fail_activity):
+    from io import BytesIO
+    import streamlit as st
+    from services import evidence_storage_service as storage
+    from test_evidence_storage_service import pdf_bytes
+    upload = BytesIO(pdf_bytes() if fail_activity else b"invalid")
+    upload.name, upload.type = "certificate.pdf", "application/pdf"
+    monkeypatch.setattr(st, "file_uploader", lambda *a, **kw: upload)
+    if fail_activity:
+        def fail(*args, **kwargs):
+            raise RuntimeError("activity write failed")
+        monkeypatch.setattr(progress, "record_progress_event", fail)
+    at = page(store); add(at, store)
+    assert at.error and not read(store) and not events(store)
+    assert not list(storage.STORAGE_ROOT.rglob("attachment.json"))
+    assert not list(storage.STORAGE_ROOT.rglob("*.pdf"))

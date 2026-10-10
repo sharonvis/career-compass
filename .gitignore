@@ -221,3 +221,4 @@ __marimo__/
 .tmp-db-check/
 .tmp-db-validation/
 data/career_compass.db
+data/evidence_uploads/
