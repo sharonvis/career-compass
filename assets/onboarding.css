@@ -237,3 +237,282 @@ input::placeholder { color: var(--muted); opacity: 1; }
   width: 0 !important;
   min-width: 0 !important;
 }
+
+/* Targeted onboarding widget fixes; existing page surfaces and typography remain. */
+.st-key-onboarding-about-card [data-testid="stWidgetLabel"] p {
+  color: rgba(20,17,15,.72); font-size: 13px; font-weight: 500;
+}
+[data-testid="stMarkdownContainer"] .cc-onboarding-intro,
+.st-key-onboarding-career-card [data-testid="stMarkdownContainer"] .cc-section-description,
+.st-key-onboarding-skills-card [data-testid="stMarkdownContainer"] .cc-section-description {
+  margin-bottom: 24px;
+}
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"] {
+  min-height: 50px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 9px; color: var(--ink); box-shadow: 0 2px 0 rgba(41,39,37,.12);
+  font: 400 15px/1.4 'Istok Web', sans-serif;
+}
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"] input,
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"] svg {
+  color: var(--ink);
+}
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"] { padding-block: 18px; }
+.st-key-onboarding-career-picker .cc-career-option-copy span { margin-top: 8px; }
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"][class*="-selected"] {
+  background: #FBDDD0; border-color: #FF4A1C;
+}
+.st-key-onboarding-career-picker [class*="st-key-target-career-control-"] button p { font-size: 26px; }
+.st-key-onboarding-skills-card [data-testid="stHorizontalBlock"] {
+  display: grid; grid-template-columns: minmax(0,1fr) minmax(0,4fr);
+  gap: 0; align-items: center; min-height: 60px; border-bottom: 1px solid rgba(20,17,15,.08);
+}
+.st-key-onboarding-skills-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] {
+  grid-template-columns: repeat(4,minmax(0,1fr)); min-height: 0; border: 0;
+}
+.st-key-onboarding-skills-card [data-testid="stColumn"] { min-width: 0 !important; width: auto !important; }
+.st-key-onboarding-skills-card .cc-level-heading { white-space: nowrap; padding-bottom: 0; }
+.st-key-onboarding-skills-card .cc-skill-heading { text-align: left; padding-left: 8px; }
+.st-key-onboarding-skills-card .cc-skill-name { overflow-wrap: anywhere; }
+/* Installed Streamlit: RadioGroup > RadioField > stRadioOption label > visual div. */
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; width: 100%;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 44px; padding: 0; margin: 0; cursor: pointer;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] > div > div:first-child {
+  width: 20px; height: 20px; box-sizing: border-box;
+  border: 1.5px solid rgba(20,17,15,.55); background: transparent;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] > div > div:first-child > div {
+  width: 8px; height: 8px; background: transparent;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-selected] > div > div:first-child {
+  background: #FF4A1C; border-color: #FF4A1C;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-selected] > div > div:first-child > div { background: var(--card); }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-focus-visible] { outline: 2px solid #FF4A1C; outline-offset: -2px; }
+.st-key-onboarding-cta button p { white-space: nowrap; overflow: visible; text-overflow: clip; }
+@media (max-width: 600px) {
+  .st-key-onboarding-skills-card { overflow-x: visible; }
+  .st-key-onboarding-skills-card > [data-testid="stVerticalBlock"] { min-width: 0; }
+  .st-key-onboarding-skills-card .cc-level-heading { font-size: clamp(8px,2vw,12px); }
+  .st-key-onboarding-skills-card .cc-skill-name { font-size: 12px; }
+  .st-key-onboarding-cta [data-testid="stHorizontalBlock"] { display: grid; grid-template-columns: minmax(0,1fr); }
+  .st-key-onboarding-cta [data-testid="stColumn"] { min-width: 0 !important; width: 100% !important; }
+}
+
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"] input { background: transparent; font: 400 15px/1.4 'Istok Web', sans-serif; }
+
+/* Onboarding-only visual energy: no app/root/theme overrides. */
+.cc-onboarding-connector { display: none; }
+.st-key-onboarding-about-card,
+.st-key-onboarding-career-card,
+.st-key-onboarding-skills-card {
+  border: 1px solid rgba(20,17,15,.08); border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card) .cc-section-eyebrow { color: #FF4A1C; }
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card) .cc-section-title { color: #14110F; }
+
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card) .cc-section-description { color: rgba(20,17,15,.72); }
+.st-key-onboarding-about-card [data-testid="stTextInputRootElement"]:focus-within,
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"]:focus-within {
+  border-color: #FF4A1C; box-shadow: 0 0 0 3px rgba(255,74,28,.12); background: rgba(251,221,208,.2);
+}
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"] {
+  background: #F7F2EB; border-color: rgba(20,17,15,.12);
+}
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"][class*="-selected"] {
+  background: #FBDDD0; border-color: #FF4A1C; box-shadow: 0 2px 10px rgba(255,74,28,.08);
+}
+.st-key-onboarding-career-picker [class*="st-key-target-career-control-"] button { color: #FF4A1C; }
+.st-key-onboarding-skills-card [data-testid="stHorizontalBlock"] { border-bottom: 0; }
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] {
+  padding: 10px 12px; border-radius: 12px; background: #F7F2EB; min-width: 0;
+}
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"]:nth-child(even) { background: rgba(251,221,208,.32); }
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] {
+  grid-template-columns: minmax(0,1fr) minmax(0,4fr); gap: 12px;
+}
+.st-key-onboarding-skills-card .cc-skill-name { font-weight: 500; color: #14110F; }
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] { gap: 8px; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] {
+  box-sizing: border-box; border: 1px solid rgba(20,17,15,.14); border-radius: 10px;
+  background: #F7F2EB; color: #14110F; min-height: 44px;
+}
+/* Hide only the painted circle; the input and its accessible label stay intact. */
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] > div > div:first-child { display: none; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] {
+  position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: nowrap;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] p {
+  color: inherit; font-size: 12px; font-weight: 500;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-selected] {
+  background: #FBDDD0; border-color: #FF4A1C; color: #14110F; box-shadow: inset 0 0 0 1px #FF4A1C;
+}
+.st-key-onboarding-skills-card [data-testid="stRadioOption"]:not([data-selected]):hover { background: rgba(251,221,208,.5); border-color: rgba(255,74,28,.45); }
+.st-key-onboarding-skills-card .cc-claim-note {
+  background: #FBDDD0; color: #14110F; font-size: 14px; font-weight: 500;
+  padding: 14px 16px; border-radius: 12px;
+}
+.st-key-onboarding-skills-card .cc-claim-note span { color: #FF4A1C; }
+.st-key-onboarding-cta { padding-block: 24px; border-top: 2px solid #FF4A1C; }
+.st-key-onboarding-cta button[kind="primary"] { background: #FF4A1C; border-color: #FF4A1C; padding-inline: 18px; }
+@media (max-width: 1000px) {
+  .st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] p { font-size: 11px; }
+}
+@media (max-width: 800px) {
+  .st-key-onboarding-skills-card > [data-testid="stHorizontalBlock"],
+  .st-key-onboarding-skills-card > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { display: none; }
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .st-key-onboarding-skills-card [data-testid="stRadioGroup"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] p { font-size: 13px; }
+  .st-key-onboarding-about-card [data-testid="stHorizontalBlock"] { display: grid; grid-template-columns: minmax(0,1fr); }
+  .st-key-onboarding-about-card [data-testid="stColumn"] { width: 100% !important; min-width: 0 !important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cc-onboarding-section-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .st-key-onboarding-about-card { animation: cc-onboarding-section-enter .5s ease-out both; }
+  .st-key-onboarding-career-card { animation: cc-onboarding-section-enter .5s ease-out .08s both; }
+  .st-key-onboarding-skills-card { animation: cc-onboarding-section-enter .5s ease-out .16s both; }
+  .st-key-onboarding-cta { animation: cc-onboarding-section-enter .5s ease-out .24s both; }
+  .st-key-onboarding-career-picker [class*="st-key-target-career-card-"] { transition: transform .2s ease-out, box-shadow .2s ease-out; }
+  .st-key-onboarding-career-picker [class*="st-key-target-career-card-"]:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(20,17,15,.06); }
+}
+/* Match header insets and gaps to the pill rows on desktop. */
+.st-key-onboarding-skills-card > [data-testid="stHorizontalBlock"],
+.st-key-onboarding-skills-card > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { padding-inline: 12px; gap: 12px; }
+.st-key-onboarding-skills-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] { gap: 8px; }
+.st-key-onboarding-cta button[kind="primary"]:hover { background: #FF4A1C; border-color: #FF4A1C; }
+
+/* Onboarding finishing details, scoped to its existing cards and copy. */
+.cc-onboarding-title, .cc-section-title { font-family: 'Bricolage Grotesque', Arial, sans-serif; font-weight: 700; }
+.cc-onboarding-intro, .cc-onboarding-motivation, .cc-quick-card,
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card, .st-key-onboarding-cta) {
+  font-family: 'Inter', Arial, sans-serif;
+}
+.cc-onboarding-eyebrow, .cc-section-eyebrow { font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .14em; color: #FF4A1C; }
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card) { position: relative; }
+.cc-onboarding-motivation { margin: 16px auto; padding: 14px 20px; max-width: 650px; border-radius: 12px; background: #FBDDD0; color: #14110F; text-align: center; font-size: 15px; line-height: 1.5; }
+.cc-onboarding-motivation span { color: #FF4A1C; margin-right: 8px; }
+.st-key-onboarding-about-card [data-testid="stWidgetLabel"] p,
+.st-key-onboarding-about-card input,
+.st-key-onboarding-about-card [data-testid="stSelectbox"] [role="group"] input { font-family: 'Inter', Arial, sans-serif; }
+.st-key-onboarding-career-picker .cc-career-option-copy strong { font-family: 'Inter', Arial, sans-serif; letter-spacing: normal; }
+.st-key-onboarding-career-picker .cc-career-option-copy span { font-family: 'Inter', Arial, sans-serif; }
+.st-key-onboarding-career-picker [class*="st-key-target-career-card-"][class*="-selected"] .cc-career-option-copy strong { font-weight: 700; }
+.st-key-onboarding-career-picker .cc-career-option-star { color: #FF4A1C; }
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,24fr) minmax(0,76fr); gap: 12px; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] { min-height: 44px; padding-inline: 12px; border-color: rgba(20,17,15,.1); }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] p { font-family: 'Inter', Arial, sans-serif; font-size: 12px; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-selected] { background: #FF4A1C; color: white; border-color: #FF4A1C; box-shadow: none; }
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] > :first-child [data-testid="stRadioOption"][data-selected] { background: #F7F2EB; color: rgba(20,17,15,.72); border-color: rgba(20,17,15,.28); }
+.st-key-onboarding-skills-card .cc-skill-name { font-family: 'Inter', Arial, sans-serif; }
+.st-key-onboarding-skills-card .cc-skill-counter { display: inline-block; width: fit-content; padding: 6px 12px; border-radius: 20px; background: #FBDDD0; color: #FF4A1C; font: 500 13px/1.4 'Inter', Arial, sans-serif; margin-bottom: 12px; }
+.st-key-onboarding-skills-card .cc-claim-note { font-family: 'Inter', Arial, sans-serif; font-size: 14px; }
+.st-key-onboarding-cta { position: sticky; bottom: 12px; z-index: 5; background: #14110F; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.st-key-onboarding-cta .cc-cta-title, .st-key-onboarding-cta button[kind="primary"] p { font-family: 'Inter', Arial, sans-serif; }
+@media (max-width: 1050px) {
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,1fr); }
+  .st-key-onboarding-skills-card [data-testid="stRadioGroup"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 600px), (max-height: 600px) {
+  /* Keep the form unobstructed when the stacked footer would dominate the viewport. */
+  .st-key-onboarding-cta { position: static; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-onboarding-title, .cc-onboarding-intro { animation: cc-onboarding-section-enter .4s ease-out both; }
+  .st-key-onboarding-skills-card .cc-skill-counter { animation: cc-onboarding-section-enter .2s ease-out both; }
+  .st-key-onboarding-skills-card [data-testid="stRadioOption"] { transition: background-color .18s ease-out, color .18s ease-out, border-color .18s ease-out, transform .18s ease-out; }
+  .st-key-onboarding-skills-card [data-testid="stRadioOption"]:active { transform: scale(.98); }
+}
+/* Match the specificity of the original card rule so its heavy shadow is removed. */
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card)[class] {
+  border: 1px solid rgba(20,17,15,.08); border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+:is(.st-key-onboarding-about-card, .st-key-onboarding-career-card, .st-key-onboarding-skills-card) .cc-section-description { font-family: 'Inter', Arial, sans-serif; }
+
+/* Final skill/CTA composition, confined to onboarding. */
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] {
+  padding: 18px 22px; border-radius: 16px; border: 1px solid rgba(20,17,15,.08);
+  background: #F7F2EB; margin-bottom: 12px;
+}
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"]:nth-child(even) { background: rgba(251,221,208,.48); }
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"]:hover { border-color: rgba(20,17,15,.18); }
+.st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,26fr) minmax(0,74fr); }
+.st-key-onboarding-skills-card [data-testid="stRadio"] { width: 100%; }
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] { grid-template-columns: repeat(4,minmax(0,1fr)); width: 100%; gap: 10px; }
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] > div { width: 100%; min-width: 0; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"] { width: 100%; min-height: 46px; }
+.st-key-onboarding-skills-card [data-testid="stRadioOption"][data-selected] { box-shadow: 0 2px 5px rgba(255,74,28,.18); }
+.st-key-onboarding-skills-card [data-testid="stRadioGroup"] > :first-child [data-testid="stRadioOption"][data-selected] { background: #FBDDD0; color: #14110F; border-color: rgba(20,17,15,.16); box-shadow: none; }
+.st-key-onboarding-skills-card,
+.st-key-onboarding-skills-card > [data-testid="stVerticalBlock"] { gap: 0; }
+.st-key-onboarding-skills-card .cc-section-title { margin-bottom: 12px; }
+.st-key-onboarding-skills-card [data-testid="stMarkdownContainer"] .cc-section-description { margin-bottom: 15px; }
+.st-key-onboarding-skills-card .cc-skill-counter { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+.st-key-onboarding-skills-card .cc-skill-counter::before { content: '\2726'; color: #FF4A1C; font-size: 28px; line-height: 1; }
+.st-key-onboarding-cta [data-testid="stHorizontalBlock"] { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 24px; }
+.st-key-onboarding-cta [data-testid="stColumn"] { width: auto !important; min-width: 0 !important; }
+.st-key-onboarding-cta button[kind="primary"] { width: max-content; min-width: 280px; max-width: 100%; }
+@media (max-width: 1050px) {
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,1fr); }
+  .st-key-onboarding-skills-card [data-testid="stRadioGroup"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 650px) {
+  .st-key-onboarding-cta [data-testid="stHorizontalBlock"] { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .st-key-onboarding-cta button[kind="primary"] { width: 100%; min-width: 0; }
+  .st-key-onboarding-cta .stButton { width: 100%; }
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] { padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"] { transition: transform .18s ease-out, border-color .18s ease-out; }
+  .st-key-onboarding-skills-card [class*="st-key-onboarding-skill-row-"]:hover { transform: translateY(-1px); }
+}
+
+@media (max-width: 650px) {
+  .st-key-onboarding-cta [data-testid="stColumn"]:last-child [data-testid="stElementContainer"] { width: 100%; }
+}
+
+/* Onboarding intro only: intact local artwork and separate animation layers. */
+.cc-onboarding-topbar { min-height: 82px; }
+.cc-onboarding-brand { gap: 12px; }
+.cc-onboarding-brand > span:not(.cc-onboarding-logo-mark) { font-family: 'Inter', Arial, sans-serif; font-size: 24px; font-weight: 800; }
+.cc-onboarding-brand .cc-onboarding-logo-mark { position: relative; display: block; flex: 0 0 36px; width: 36px; height: 36px; overflow: hidden; }
+.cc-onboarding-brand .cc-onboarding-logo-mark img { position: absolute; width: 70.5px; max-width: none; height: auto; left: -18.5px; top: -5px; }
+.cc-onboarding-intro-layout { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); align-items: center; gap: 28px; margin-bottom: 24px; }
+.cc-onboarding-intro-copy { min-width: 0; }
+.cc-onboarding-illustration { width: min(260px,100%); justify-self: center; padding: 8px; box-sizing: border-box; }
+.cc-onboarding-illustration img { display: block; width: 100%; height: auto; object-fit: contain; }
+.cc-onboarding-intro-layout button[title="View fullscreen"],
+.cc-onboarding-intro-layout [data-testid="StyledFullScreenButton"] { display: none; }
+.cc-onboarding-callout-mark { display: inline-block; width: 10px; height: 10px; border: 2px solid #FF4A1C; transform: rotate(45deg); }
+@media (max-width: 650px) {
+  .cc-onboarding-topbar { flex-wrap: wrap; gap: 12px; padding-block: 16px; }
+  .cc-onboarding-brand > span:not(.cc-onboarding-logo-mark) { font-size: 22px; }
+  .cc-onboarding-intro-layout { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .cc-onboarding-illustration { width: min(220px,100%); }
+  .cc-onboarding-illustration img { max-height: 220px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cc-onboarding-art-enter {
+    from { opacity: 0; transform: scale(.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes cc-onboarding-art-float {
+    0%, 100% { transform: translateY(-4px); }
+    50% { transform: translateY(4px); }
+  }
+  .cc-onboarding-illustration { animation: cc-onboarding-art-enter .5s ease-out both; }
+  .cc-onboarding-illustration img { animation: cc-onboarding-art-float 6s ease-in-out infinite; }
+}

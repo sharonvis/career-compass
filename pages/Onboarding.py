@@ -57,7 +57,7 @@ logo_path = ROOT / "assets" / "images" / "CareerCompassLogo.png"
 logo = base64.b64encode(logo_path.read_bytes()).decode("ascii")
 
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-st.markdown('<div class="cc-onboarding-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+st.markdown('''<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap"><div class="cc-onboarding-marker" aria-hidden="true"></div>''', unsafe_allow_html=True)
 st.session_state.setdefault("onboarding_claims", {})
 try:
     ensure_local_catalog()
@@ -72,7 +72,7 @@ st.markdown(
     f"""
     <div class="cc-onboarding-topbar">
       <div class="cc-onboarding-brand">
-        <img src="data:image/png;base64,{logo}" alt="">
+        <span class="cc-onboarding-logo-mark"><img src="data:image/png;base64,{logo}" alt=""></span>
         <span>CAREER COMPASS</span>
       </div>
       <span class="cc-onboarding-step">ONBOARDING</span>
@@ -81,26 +81,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-hero_copy, quick_card = st.columns([2.45, 1], vertical_alignment="center")
-with hero_copy:
-    st.markdown(
-        """
+intro_art = base64.b64encode((ROOT / "assets" / "images" / "TakeAction.png").read_bytes()).decode("ascii")
+st.markdown(
+    f"""
+    <div class="cc-onboarding-intro-layout">
+      <div class="cc-onboarding-intro-copy">
         <p class="cc-onboarding-eyebrow">GET STARTED</p>
         <h1 class="cc-onboarding-title">Build your Career Compass.</h1>
         <p class="cc-onboarding-intro">Tell us where you are now, where you want to go, and how you rate your current skills.</p>
-        """,
-        unsafe_allow_html=True,
-    )
-with quick_card:
-    st.markdown(
-        """
-        <div class="cc-quick-card">
-          <strong><span>✦</span> 3 quick sections</strong>
-          <p>About you · Target career · Claimed skills</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+      </div>
+      <div class="cc-onboarding-illustration" aria-hidden="true">
+        <img src="data:image/png;base64,{intro_art}" alt="">
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 with st.container(key="onboarding-about-card"):
     st.markdown(
@@ -118,7 +114,7 @@ with st.container(key="onboarding-about-card"):
                 st.session_state["onboarding_email"] = user_service.get_user_profile(session, st.session_state["user_id"])["email"]
         except Exception:
             st.session_state["onboarding_email"] = ""
-    st.text_input("Email", key="onboarding_email")
+    st.text_input("Email", key="onboarding_email", placeholder="you@college.edu")
     email = st.session_state["onboarding_email"].strip()
     existing = None
     try:
@@ -148,14 +144,14 @@ with st.container(key="onboarding-about-card"):
         st.info("Existing profile loaded. Profile details are read-only; only your career and skill claims will be updated.")
     left, right = st.columns(2, gap="large")
     with left:
-        st.text_input("Full name", key="onboarding_name", disabled=existing is not None)
-        st.text_input("Degree", key="onboarding_degree", disabled=existing is not None)
+        st.text_input("Full name", key="onboarding_name", disabled=existing is not None, placeholder="Priya Sharma")
+        st.text_input("Degree", key="onboarding_degree", disabled=existing is not None, placeholder="B.Tech")
     with right:
-        st.text_input("Branch", key="onboarding_branch", disabled=existing is not None)
+        st.text_input("Branch", key="onboarding_branch", disabled=existing is not None, placeholder="CSE")
         st.selectbox("Year of study", (1, 2, 3, 4), key="onboarding_year",
                      format_func=lambda year: f"Year {year}", disabled=existing is not None)
 
-st.markdown('<div class="cc-onboarding-connector" aria-hidden="true"></div>', unsafe_allow_html=True)
+st.markdown('<aside class="cc-onboarding-motivation"><span class="cc-onboarding-callout-mark" aria-hidden="true"></span> Your starting point doesn&#39;t define your destination.</aside>', unsafe_allow_html=True)
 
 with st.container(key="onboarding-career-card"):
     st.markdown(
@@ -194,7 +190,7 @@ with st.container(key="onboarding-career-card"):
                     if selected:
                         st.markdown('<span class="cc-career-option-star">✦</span>', unsafe_allow_html=True)
 
-st.markdown('<div class="cc-onboarding-connector" aria-hidden="true"></div>', unsafe_allow_html=True)
+
 
 try:
     with SessionLocal() as session:
@@ -217,40 +213,41 @@ with st.container(key="onboarding-skills-card"):
         """,
         unsafe_allow_html=True,
     )
-    skill_heading, level_heading = st.columns([1.12, 1], gap="medium")
-    with level_heading:
-        heading_cols = st.columns(4, gap="small")
-        for col, level in zip(heading_cols, levels):
-            with col:
-                st.markdown(f'<p class="cc-level-heading">{level}</p>', unsafe_allow_html=True)
+    rated_count = sum(st.session_state["onboarding_claims"].get(skill["skill_id"], 0) > 0 for skill in skills)
+    st.markdown(
+        f'<p class="cc-skill-counter" aria-live="polite" data-rated="{rated_count}">{rated_count} of {len(skills)} skills rated</p>',
+        unsafe_allow_html=True,
+    )
     for skill_record in skills:
         skill = skill_record["name"]
         skill_id = skill_record["skill_id"]
-        skill_col, choices_col = st.columns([1.12, 1], gap="medium", vertical_alignment="center")
-        with skill_col:
-            st.markdown(f'<p class="cc-skill-name">{skill}</p>', unsafe_allow_html=True)
-        with choices_col:
-            st.radio(
-                f"Claimed level for {skill}",
-                options=(0, 1, 2, 3),
-                format_func=lambda level: LEVELS[level],
-                horizontal=True,
-                key=f"onboarding_claim_{skill_id}",
-                on_change=_save_claim,
-                args=(skill_id,),
-                label_visibility="collapsed",
-            )
+        with st.container(key=f"onboarding-skill-row-{skill_id}"):
+            skill_col, choices_col = st.columns([26, 74], gap="medium", vertical_alignment="center")
+            with skill_col:
+                st.markdown(f'<p class="cc-skill-name">{skill}</p>', unsafe_allow_html=True)
+            with choices_col:
+                st.radio(
+                    f"Claimed level for {skill}",
+                    options=(0, 1, 2, 3),
+                    format_func=lambda level: LEVELS[level],
+                    horizontal=True,
+                    key=f"onboarding_claim_{skill_id}",
+                    on_change=_save_claim,
+                    args=(skill_id,),
+                    label_visibility="collapsed",
+                    width="stretch",
+                )
     st.markdown(
         '<div class="cc-claim-note"><span>✦</span> These are claims, not scores. Your assessments will determine demonstrated levels.</div>',
         unsafe_allow_html=True,
     )
 
 with st.container(key="onboarding-cta"):
-    cta_text, cta_button = st.columns([1.5, 0.55], vertical_alignment="center")
+    cta_text, cta_button = st.columns([1.3, 1], vertical_alignment="center")
     with cta_text:
         st.markdown('<p class="cc-cta-title">Ready to see your Career Compass?</p>', unsafe_allow_html=True)
     with cta_button:
-        if st.button("Build My Career Compass  →", type="primary", key="build_career_compass", width="stretch"):
+        if st.button("Build My Career Compass →", type="primary", key="build_career_compass", width="content"):
             profile = dict(name=st.session_state["onboarding_name"].strip(), email=email,
                            degree=st.session_state["onboarding_degree"].strip(),
                            branch=st.session_state["onboarding_branch"].strip(),
