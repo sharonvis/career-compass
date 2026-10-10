@@ -7,7 +7,8 @@ from urllib.parse import urlparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from database.models import Opportunity
+from database.models import Opportunity, OpportunitySkill, Skill
+from services.opportunity_skill_mapping_service import infer_skill_mappings
 
 
 LIVE_OPPORTUNITY_SOURCE = "serpapi"
@@ -50,6 +51,37 @@ def _valid_opportunity(record):
     return True
 
 
+def _sync_live_skills(session, row, record):
+    """Live mappings are ingestion-owned; absent metadata never erases them."""
+    parts = record.get("mapping_text")
+    if not isinstance(parts, list) or not parts or not all(
+        isinstance(part, Mapping) and isinstance(part.get("text"), str)
+        and part["text"].strip() for part in parts
+    ):
+        return
+    if row.is_seeded or row.source != LIVE_OPPORTUNITY_SOURCE:
+        return
+    inferred = infer_skill_mappings(parts)
+    names = {item["skill_name"] for item in inferred}
+    ids = dict(session.execute(select(Skill.name, Skill.id).where(Skill.name.in_(names))).all())
+    desired = {ids[item["skill_name"]]: item for item in inferred if item["skill_name"] in ids}
+    existing = {item.skill_id: item for item in session.scalars(
+        select(OpportunitySkill).where(OpportunitySkill.opportunity_id == row.id)
+    )}
+    for skill_id, mapping in existing.items():
+        if skill_id not in desired:
+            session.delete(mapping)
+    for skill_id, item in desired.items():
+        mapping = existing.get(skill_id)
+        if mapping is None:
+            mapping = OpportunitySkill(opportunity_id=row.id, skill_id=skill_id)
+            session.add(mapping)
+        mapping.required_level = item["required_level"]
+        mapping.is_required = item["is_required"]
+    # Make refreshes visible to a second ingestion in the same transaction.
+    session.flush()
+
+
 def persist_normalized_opportunities(
     session: Session,
     opportunities: list[dict],
@@ -58,7 +90,9 @@ def persist_normalized_opportunities(
 
     Duplicate incoming natural keys keep the first record in the batch. For an
     existing live listing, only its type, source URL, and deadline are refreshed;
-    identity fields and the seeded flag are never changed.
+    identity fields and the seeded flag are never changed. Supplied mapping_text
+    also synchronizes ingestion-owned live skills; it is never a model column.
+    Result counters retain their Opportunity-row meaning.
     """
     if not isinstance(opportunities, list):
         raise ValueError("opportunities must be a list")
@@ -131,6 +165,7 @@ def persist_normalized_opportunities(
                     result["updated"] += 1
                 else:
                     result["unchanged"] += 1
+            _sync_live_skills(session, row, record)
             result["opportunity_ids"].append(row.id)
 
     session.flush()

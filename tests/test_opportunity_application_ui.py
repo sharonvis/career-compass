@@ -96,7 +96,7 @@ def test_real_ranking_bands_details_links_and_no_mock(store):
     # Two-column rendering groups the tree by column; check each column's order.
     for index in (0, 1):
         expected = [row["opportunity_id"] for row in rows[index::2]]
-        rendered = [int(b.key.removeprefix("save_opportunity_")) for b in at.button][sum(len(rows[j::2]) for j in range(index)):sum(len(rows[j::2]) for j in range(index + 1))]
+        rendered = [int(b.key.removeprefix("save_opportunity_")) for b in at.button if b.key.startswith("save_opportunity_")][sum(len(rows[j::2]) for j in range(index)):sum(len(rows[j::2]) for j in range(index + 1))]
         assert rendered == expected
     for row in rows:
         assert row["title"] in text(at) and row["company"] in text(at)
@@ -112,18 +112,18 @@ def test_search_location_and_sort(store):
     rows = ranked(store)
     at = page(store)
     at.text_input(key="opportunity_search").set_value(rows[0]["title"]).run()
-    assert len(at.button) == 1
+    assert len([b for b in at.button if b.key.startswith("save_opportunity_")]) == 1
     at.text_input(key="opportunity_search").set_value("no such role").run()
-    assert not at.button and at.info
+    assert not [b for b in at.button if b.key.startswith("save_opportunity_")] and at.info
     at.text_input(key="opportunity_search").set_value("").run()
     location = rows[0]["location"]
     at.selectbox(key="opportunity_location").set_value(location).run()
-    assert len(at.button) == sum(row["location"] == location for row in rows)
+    assert len([b for b in at.button if b.key.startswith("save_opportunity_")]) == sum(row["location"] == location for row in rows)
     at.selectbox(key="opportunity_location").set_value(None).run()
     for sorting, key in (("Title", lambda row: row["title"].casefold()), ("Closing soon", lambda row: row["deadline"] or date.max)):
         at.selectbox(key="opportunity_sort").set_value(sorting).run()
         ordered = sorted(rows, key=key)
-        actual = [int(b.key.removeprefix("save_opportunity_")) for b in at.button]
+        actual = [int(b.key.removeprefix("save_opportunity_")) for b in at.button if b.key.startswith("save_opportunity_")]
         assert actual == [r["opportunity_id"] for r in ordered[::2] + ordered[1::2]]
 
 

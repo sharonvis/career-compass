@@ -193,3 +193,91 @@ def test_caller_can_roll_back_persisted_opportunities(session):
 def test_non_list_input_is_rejected(session):
     with pytest.raises(ValueError, match="must be a list"):
         persist_normalized_opportunities(session, opportunity())
+
+
+def live_skill_rows(session, oid):
+    return session.execute(select(models.Skill.name, models.OpportunitySkill.required_level,
+                                  models.OpportunitySkill.is_required).join(models.OpportunitySkill)
+                           .where(models.OpportunitySkill.opportunity_id == oid)
+                           .order_by(models.Skill.name)).all()
+
+
+def mapping_record(text, **kwargs):
+    return opportunity(mapping_text=[{"context": "ambiguous", "text": text}], **kwargs)
+
+
+def test_live_mappings_idempotent_and_canonical(session):
+    record = mapping_record("Required: Python SQL PostgreSQL")
+    first = persist_normalized_opportunities(session, [record])
+    second = persist_normalized_opportunities(session, [record])
+    assert first["opportunity_ids"] == second["opportunity_ids"]
+    oid = first["opportunity_ids"][0]
+    assert live_skill_rows(session, oid) == [("Python", 1, True), ("SQL", 1, True)]
+    assert session.scalar(select(func.count()).select_from(models.Skill)) == 10
+
+
+def test_refresh_removes_old_changes_flags_and_preserves_row_id(session):
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: Python SQL")])["opportunity_ids"][0]
+    result = persist_normalized_opportunities(session, [mapping_record("Required: Git. Preferred: Python")])
+    assert result["opportunity_ids"] == [oid]
+    assert live_skill_rows(session, oid) == [("Git", 1, True), ("Python", 1, False)]
+
+
+def test_missing_mapping_metadata_does_not_erase(session):
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: SQL")])["opportunity_ids"][0]
+    persist_normalized_opportunities(session, [opportunity()])
+    persist_normalized_opportunities(session, [opportunity(mapping_text=[])])
+    assert live_skill_rows(session, oid) == [("SQL", 1, True)]
+
+
+def test_fresh_unrecognized_text_clears_live_mappings(session):
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: SQL")])["opportunity_ids"][0]
+    persist_normalized_opportunities(session, [mapping_record("Required: enthusiasm")])
+    assert live_skill_rows(session, oid) == []
+    assert session.get(models.Opportunity, oid) is not None
+
+
+def test_only_optional_mappings_kept_but_excluded_from_ranking(session):
+    from services import user_service, opportunity_service
+    user = user_service.create_user(session, "Student", "optional@example.com", "BSc", "CS", 1)
+    cid = user_service.list_careers(session)[0]["career_id"]
+    oid = persist_normalized_opportunities(session, [mapping_record("Preferred: SQL")])["opportunity_ids"][0]
+    assert live_skill_rows(session, oid) == [("SQL", 1, False)]
+    assert oid not in {o["opportunity_id"] for o in opportunity_service.get_ranked_opportunities(session, user["user_id"], cid)}
+
+
+def test_seeded_mappings_untouched_even_with_matching_live_title(session):
+    seeded = session.scalar(select(models.Opportunity).where(models.Opportunity.is_seeded.is_(True)))
+    before = live_skill_rows(session, seeded.id)
+    record = mapping_record("Required: Excel", title=seeded.title, company=seeded.company, location=seeded.location)
+    oid = persist_normalized_opportunities(session, [record])["opportunity_ids"][0]
+    assert oid != seeded.id
+    assert live_skill_rows(session, seeded.id) == before
+    assert seeded.source == "seed" and seeded.is_seeded is True
+
+
+def test_mapping_updates_level_to_inferred_baseline(session):
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: SQL")])["opportunity_ids"][0]
+    row = session.scalar(select(models.OpportunitySkill).where(models.OpportunitySkill.opportunity_id == oid))
+    row.required_level = 3
+    session.flush()
+    persist_normalized_opportunities(session, [mapping_record("Required: SQL")])
+    assert row.required_level == 1
+
+
+def test_insert_and_mapping_rollback_together(session):
+    before = session.scalar(select(func.count()).select_from(models.Opportunity))
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: Python SQL")])["opportunity_ids"][0]
+    assert len(live_skill_rows(session, oid)) == 2
+    session.rollback()
+    assert session.scalar(select(func.count()).select_from(models.Opportunity)) == before
+    assert session.get(models.Opportunity, oid) is None
+    assert live_skill_rows(session, oid) == []
+
+
+def test_refresh_rollback_restores_existing_mappings(session):
+    oid = persist_normalized_opportunities(session, [mapping_record("Required: Python SQL")])["opportunity_ids"][0]
+    session.commit()
+    persist_normalized_opportunities(session, [mapping_record("Required: Git")])
+    session.rollback()
+    assert live_skill_rows(session, oid) == [("Python", 1, True), ("SQL", 1, True)]

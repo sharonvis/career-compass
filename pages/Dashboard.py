@@ -42,7 +42,10 @@ try:
             st.stop()
         summary = career_service.get_user_career_summary(session, user_id, career_id)
         roadmap = roadmap_service.get_user_roadmap(session, user_id, career_id)
-        opportunities = opportunity_service.get_ranked_opportunities(session, user_id, career_id, limit=3)
+        ranked_opportunities = opportunity_service.get_ranked_opportunities(session, user_id, career_id)
+        # Dashboard-only source priority; retain backend order within each group.
+        opportunities = ([item for item in ranked_opportunities if not item["is_seeded"]]
+                         + [item for item in ranked_opportunities if item["is_seeded"]])[:3]
         counts = application_service.get_application_status_counts(session, user_id)
         activity = progress_service.list_recent_progress_events(session, user_id, limit=5)
 except Exception:
@@ -92,13 +95,13 @@ with st.container(key="dashboard-stats"):
                 st.metric(label, f"{value:.1%}")
                 caption = {"claimed": "From your self-ratings", "demonstrated": "Includes discounted unassessed claims", "coverage": "Weighted by skill importance"}[key]
                 st.markdown(f'<div class="cc-db-metric-caption">{caption}</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="cc-db-meter" role="img" aria-label="{escape(label)} {value:.1%}"><i style="width:{value:.6%}"></i></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="cc-db-meter" data-zero="{str(value == 0).lower()}" role="img" aria-label="{escape(label)} {value:.1%}"><i style="width:{value:.6%}"></i></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="cc-db-loop-module"><p class="cc-db-loop-heading">CAREER COMPASS LOOP</p><div class="cc-db-loop-nodes">' + ''.join(f'<div class="cc-db-loop-step"><span class="cc-db-loop-number">{i:02}</span><span class="cc-db-loop-name">{label}</span></div>' for i, label in enumerate(("Claim", "Assess", "Find gap", "Improve", "Reassess"), 1)) + '</div></div>', unsafe_allow_html=True)
 
 # B: Confirmed gaps and a three-item, backend-ordered roadmap preview.
 with st.container(key="dashboard-middle"):
-    gaps_card, roadmap_card = st.columns([.94, 1.06], gap="medium")
+    gaps_card, roadmap_card = st.columns([.46, .54], gap="medium")
     with gaps_card:
         with st.container(key="dashboard-important-gaps"):
             st.markdown('<div class="cc-db-gap-eyebrow">CONFIRMED GAPS</div>', unsafe_allow_html=True)
@@ -107,7 +110,8 @@ with st.container(key="dashboard-middle"):
                 st.markdown(f'<div class="cc-db-gap-empty"><div><h3>No confirmed gaps yet</h3><p>Unassessed skills are not confirmed gaps.</p></div><img src="data:image/png;base64,{magnifier}" alt="" aria-hidden="true"></div>', unsafe_allow_html=True)
             for gap in summary["confirmed_gaps"]:
                 skill = next(skill for skill in summary["skills"] if skill["name"] == gap["skill_name"])
-                st.markdown(f'<div class="cc-db-gap"><b>{escape(gap["skill_name"])}</b><div><span>Claimed {skill["claimed_level"]}</span><span>Demonstrated {gap["demonstrated_level"]}</span></div></div>', unsafe_allow_html=True)
+                gap_amount = f'<span class="cc-db-gap-amount">Gap: {escape(str(gap["gap"]))}</span>' if gap.get("gap") is not None else ""
+                st.markdown(f'<div class="cc-db-gap"><b>{escape(gap["skill_name"])}</b><div><span>Claimed {escape(str(skill["claimed_level"]))}</span><span aria-hidden="true">&rarr;</span><span>Demonstrated {escape(str(gap["demonstrated_level"]))}</span>{gap_amount}</div></div>', unsafe_allow_html=True)
     with roadmap_card:
         with st.container(key="dashboard-current-roadmap"):
             completed = sum(item["status"] == "completed" for item in roadmap)
@@ -117,7 +121,7 @@ with st.container(key="dashboard-middle"):
             else:
                 current_index = next((i for i, item in enumerate(roadmap) if item["status"] == "current"), 0)
                 preview = roadmap[current_index:current_index + 3]
-                segments = ''.join(f'<span class="{"done" if i < completed else ""}"></span>' for i in range(len(roadmap)))
+                segments = ''.join(f'<span><i style="width:{min(1, max(0, completed / len(roadmap) * 6 - i)):.6%}"></i></span>' for i in range(6))
                 st.markdown(f'<div class="cc-db-segments" role="img" aria-label="{completed} of {len(roadmap)} completed">{segments}</div>', unsafe_allow_html=True)
                 rows = []
                 for item in preview:
@@ -148,12 +152,10 @@ def opportunity_card_html(opportunity, index):
     chip = f'<div class="cc-opps-band cc-opps-band-{band_class}">{text(band)}</div>' if text(band) else ""
     title = f'<h3>{text(opportunity.get("title"))}</h3>' if text(opportunity.get("title")) else ""
     company = f'<div class="cc-opps-company">{text(opportunity.get("company"))}</div>' if text(opportunity.get("company")) else ""
-    featured = index == 1
-    eyebrow = '<div class="cc-opps-feature-label">TOP MATCH</div>' if featured else ""
     location = text(opportunity.get("location"))
     kind = text(opportunity.get("opportunity_type"))
     context = '<div class="cc-opps-context">' + '<span class="cc-opps-separator" aria-hidden="true"> &middot; </span>'.join(value for value in (location, kind) if value) + '</div>' if location or kind else ""
-    footer = []
+    footer = [f'<span>{location}</span>'] if location else []
     deadline = opportunity.get("deadline")
     if text(deadline):
         parsed = deadline
@@ -178,44 +180,44 @@ def opportunity_card_html(opportunity, index):
         style, label, group = presentation
         name = text(reason.get("skill_name")) or text(reason.get("filter")) or group
         reason_rows.append(f'<div class="cc-opps-reason-row"><span class="cc-opps-signal-name">{name}</span><span class="cc-opps-reason-badge cc-opps-reason-{style}">{label}</span></div>')
-    signals = reason_rows[:3 if featured else 2]
+    signals = reason_rows[:3]
     reasons = '<div class="cc-opps-reasons"><div class="cc-opps-reasons-label">MATCH SIGNALS</div>' + ''.join(signals) + '</div>' if signals else ""
-    treatment = "featured" if featured else "secondary"
     art = f'<div class="cc-opps-polish-art cc-opps-polish-art-{index}" aria-hidden="true"></div>'
-    return f'<div class="cc-opps-card cc-opps-{treatment}">{art}<div class="cc-opps-body">{eyebrow}<div class="cc-opps-top">{chip}</div>{title}{company}{context}{reasons}{metadata}</div></div>'
+    return f'<div class="cc-opps-card cc-opps-equal cc-opps-rank-{index}">{art}<div class="cc-opps-body"><div class="cc-opps-top">{chip}</div>{title}{company}{context}{reasons}{metadata}</div></div>'
 
 
 with st.container(key="dashboard-recommended-opportunity"):
     art_rules = []
     encoded_images = {}
     for index in range(1, 4):
-        image = next((path for path in (assets / "dashboard").glob(f"opp_{index}.*") if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}), assets / "dashboard" / "hero_banner.png")
+        image = assets / "dashboard" / f"opp_{index}.png"
         if image.is_file():
             if image not in encoded_images:
                 encoded_images[image] = base64.b64encode(image.read_bytes()).decode("ascii")
             mime = "image/jpeg" if image.suffix.lower() in {".jpg", ".jpeg"} else f"image/{image.suffix[1:].lower()}"
             art_rules.append(f'.cc-opps .cc-opps-polish-art-{index}::before' + '{background-image:url("data:' + mime + ';base64,' + encoded_images[image] + '");}')
     st.markdown('<style>' + ''.join(art_rules) + '</style>', unsafe_allow_html=True)
-    header = '<div class="cc-opps-header"><div class="cc-opps-eyebrow">TOP RANKED MATCHES</div><h2>Recommended Opportunities</h2></div>'
+    header = '<div class="cc-opps-header"><div class="cc-opps-eyebrow">TOP RANKED MATCHES</div><h2>Recommended Opportunities</h2><p class="cc-opps-intro">Best matches based on your current career and demonstrated skills.</p></div>'
     cards = '<div class="cc-opps-grid">' + ''.join(opportunity_card_html(item, i) for i, item in enumerate(opportunities[:3], 1)) + '</div>' if opportunities else '<div class="cc-opps-empty">No matching opportunities available yet.</div>'
     st.markdown('<div class="cc-opps">' + header + cards + '</div>', unsafe_allow_html=True)
 with st.container(key="dashboard-bottom"):
-    applications_column, activity_column = st.columns([7, 5], gap="medium")
+    applications_column, activity_column = st.columns([31, 19], gap="medium")
     with applications_column:
         with st.container(key="dashboard-applications"):
-            st.markdown('<div class="cc-db-bottom-eyebrow">APPLICATIONS</div>', unsafe_allow_html=True)
-            primary = ''.join(f'<div class="cc-db-application-tile {"zero" if counts[status] == 0 else "nonzero"}"><div class="cc-db-application-value">{escape(str(counts[status]))}</div><div class="cc-db-application-label">{escape(status)}</div></div>' for status in ("saved", "applied", "interview", "offer"))
+            with st.container(key="dashboard-applications-header"):
+                st.markdown('<div class="cc-db-bottom-eyebrow">APPLICATIONS</div>', unsafe_allow_html=True)
+                st.page_link("pages/Applications.py", label="Open applications", width="content")
+            primary = ''.join(f'<div class="cc-db-application-tile cc-db-application-{status} {"zero" if counts[status] == 0 else "nonzero"}"><div class="cc-db-application-value">{escape(str(counts[status]))}</div><div class="cc-db-application-label">{escape(status)}</div></div>' for status in ("saved", "applied", "interview", "offer"))
             secondary = ''.join(f'<div class="cc-db-application-secondary-item {"zero" if counts[status] == 0 else "nonzero"}"><span>{escape(status.capitalize())}</span><b>{escape(str(counts[status]))}</b></div>' for status in ("rejected", "withdrawn"))
             st.markdown('<div class="cc-db-application-tiles">' + primary + '</div><div class="cc-db-application-secondary">' + secondary + '</div>', unsafe_allow_html=True)
-            st.page_link("pages/Applications.py", label="Open applications", width="content")
     with activity_column:
         with st.container(key="dashboard-recent-activity"):
             st.markdown('<div class="cc-db-bottom-eyebrow">RECENT ACTIVITY</div>', unsafe_allow_html=True)
             if not activity:
-                st.markdown('<div class="cc-db-activity-empty"><span aria-hidden="true"></span><div>No recent activity yet.</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="cc-db-activity-empty"><span aria-hidden="true"></span><div><p>No recent activity yet.</p><small>Your assessments, applications and progress updates will appear here.</small></div></div>', unsafe_allow_html=True)
             else:
                 events = []
-                for event in activity[:5]:
+                for event in activity[:3]:
                     label = event["description"] or event["event_type"].replace("_", " ")
                     timestamp = event["created_at"].strftime("%d %b %Y, %H:%M UTC") if event["created_at"] else ''
                     events.append(f'<div class="cc-db-event"><span aria-hidden="true"></span><div><p>{escape(label)}</p><time>{escape(timestamp)}</time></div></div>')

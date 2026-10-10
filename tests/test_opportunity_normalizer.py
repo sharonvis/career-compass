@@ -37,6 +37,7 @@ def test_normalizes_valid_job_to_existing_opportunity_fields():
         "source_url": "https://www.google.com/search?jobs=example",
         "deadline": date(2026, 12, 31),
         "is_seeded": False,
+        "mapping_text": [{"context": "ambiguous", "text": "Role details are not stored by the existing Opportunity model."}],
     }]
 
 
@@ -132,3 +133,28 @@ def test_parses_supported_deadline_formats(deadline):
     )
 
     assert normalized[0]["deadline"] == date(2026, 12, 31)
+
+
+def test_preserves_supplied_mapping_text_and_highlight_contexts():
+    normalized = normalize_opportunity_results({"jobs_results": [job(
+        description="Requirements:\nPython &amp; SQL", requirements=["ML", "Pandas"],
+        preferred_qualifications="Git", job_highlights=[
+            {"title": "Qualifications", "items": ["Statistics"]},
+            {"title": "Preferred qualifications", "items": ["Excel"]},
+        ],
+    )]}, "internship")[0]
+    assert normalized["mapping_text"] == [
+        {"context": "ambiguous", "text": "Requirements:\nPython & SQL"},
+        {"context": "required", "text": "ML"},
+        {"context": "required", "text": "Pandas"},
+        {"context": "optional", "text": "Git"},
+        {"context": "required", "text": "Statistics"},
+        {"context": "optional", "text": "Excel"},
+    ]
+
+
+def test_absent_or_malformed_mapping_text_is_omitted():
+    record = normalize_opportunity_results({"jobs_results": [job(
+        description=None, requirements=42, job_highlights=[None, {"items": 42}],
+    )]}, "internship")[0]
+    assert "mapping_text" not in record

@@ -1,9 +1,12 @@
 ﻿"""Discover normalized opportunities using backend ranking and match explanations."""
 from datetime import date
 from html import escape
+import re
 import streamlit as st
+import config
 from database.db import SessionLocal, session_scope
 from services import application_service, opportunity_service, user_service
+from services import opportunity_ingestion_service
 from ui.components.sidebar import render_sidebar
 
 st.set_page_config(page_title="Opportunities · Career Compass", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
@@ -38,6 +41,32 @@ with location_col:
     location = st.selectbox("Location", [None] + sorted({o["location"] for o in opportunities if o["location"]}), format_func=lambda v: v if v is not None else "Any location", key="opportunity_location")
 with sort_col:
     sorting = st.selectbox("Sort by", ("Best match", "Closing soon", "Title"), key="opportunity_sort")
+if st.button("Refresh live opportunities", key="refresh_live_opportunities"):
+    if not config.get_serpapi_api_key():
+        st.info("SerpAPI is not configured yet.")
+    else:
+        career_name = profile["target_career_name"]
+        keywords = {"AI/ML Engineer": "machine learning"}.get(career_name, career_name.casefold())
+        search_location = location.strip() if location else None
+        if search_location and (
+            search_location.casefold() in {"remote", "any location"}
+            or re.search(r"\(\s*\+\d+\s+others?\s*\)", search_location, re.IGNORECASE)
+        ):
+            search_location = None
+        try:
+            with st.spinner("Refreshing live opportunities..."):
+                with session_scope() as session:
+                    result = opportunity_ingestion_service.ingest_opportunities(
+                        session, "internship", keywords=keywords, location=search_location or None, refresh=True,
+                    )
+        except Exception:
+            st.error("Could not refresh live opportunities. Please try again later. Your stored opportunities remain available.")
+        else:
+            st.session_state["opportunity_notice"] = (
+                "Live opportunity search refreshed."
+                if result["fetched"] else "No live opportunities were returned. Your stored opportunities remain available."
+            )
+            st.rerun()
 visible = [o for o in opportunities if (location is None or o["location"] == location)
            and (not query or any(query in (o[field] or "").casefold() for field in ("title", "company", "location")))]
 if sorting == "Closing soon":
@@ -69,7 +98,8 @@ for index, item in enumerate(visible):
                         st.write(f"{skill['skill_name']} — required level {skill['required_level']}; claimed {skill['claimed_level']}; demonstrated {skill['demonstrated_level'] if skill['demonstrated_level'] is not None else 'Unassessed'}")
                 for reason in item["reasons"]:
                     st.write(reason["text"])
-                st.caption(f"Source: {item['source']} · {'Seeded' if item['is_seeded'] else 'Live'}")
+                source_label = "DEMO DATA" if item["is_seeded"] else "LIVE" if item["source"] == "serpapi" else item["source"]
+                st.caption(f"Source: {source_label}")
             if item["source_url"]:
                 st.link_button("View opportunity", item["source_url"])
             if oid in tracked:

@@ -93,6 +93,42 @@ def _deduplication_key(opportunity):
     )
 
 
+def _mapping_text(job):
+    """Preserve supplied text as ingestion metadata, never Opportunity columns."""
+    parts = []
+
+    def add(value, context="ambiguous"):
+        if isinstance(value, str):
+            # Preserve section boundaries while removing HTML presentation.
+            value = html.unescape(value)
+            value = re.sub(r"</?(?:p|div|li|ul|ol|h[1-6])\b[^>]*>|<br\s*/?>", "\n", value, flags=re.I)
+            value = re.sub(r"<[^>]*>", "", value)
+            cleaned = "\n".join(filter(None, (_clean_text(line) for line in value.splitlines())))
+            if cleaned:
+                parts.append({"context": context, "text": cleaned})
+        elif isinstance(value, list):
+            for item in value:
+                add(item, context)
+
+    for field, context in (("description", "ambiguous"), ("requirements", "required"),
+                           ("qualifications", "required"), ("preferred_qualifications", "optional")):
+        add(job.get(field), context)
+    highlights = job.get("job_highlights")
+    if isinstance(highlights, list):
+        for highlight in highlights:
+            if not isinstance(highlight, Mapping):
+                continue
+            label = _clean_text(highlight.get("title")) or ""
+            if re.search(r"preferred|optional|nice[ -]to[ -]have|bonus", label, re.I):
+                context = "optional"
+            elif re.search(r"qualifications|requirements|essential|mandatory|required", label, re.I):
+                context = "required"
+            else:
+                context = "ambiguous"
+            add(highlight.get("items"), context)
+    return parts
+
+
 def normalize_opportunity_results(
     search_results: Mapping,
     opportunity_type: str,
@@ -131,6 +167,9 @@ def normalize_opportunity_results(
             "deadline": _deadline(job),
             "is_seeded": False,
         }
+        mapping_text = _mapping_text(job)
+        if mapping_text:
+            opportunity["mapping_text"] = mapping_text
         key = _deduplication_key(opportunity)
         if key in seen:
             continue

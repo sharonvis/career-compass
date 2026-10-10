@@ -235,3 +235,32 @@ def test_pipeline_summary_counts_invalid_and_duplicate_jobs(session):
         "updated": 0,
         "skipped": 3,
     }
+
+
+def test_live_ingestion_maps_and_enters_unchanged_ranking(session):
+    from services import user_service, opportunity_service
+    user = user_service.create_user(session, "Student", "mapped@example.com", "BSc", "CS", 1)
+    cid = user_service.list_careers(session)[0]["career_id"]
+    seeded_before = opportunity_service.get_ranked_opportunities(session, user["user_id"], cid)
+    fetcher = Mock(return_value=results(raw_job(description="Required: Python and SQL. Preferred: Git.")))
+    ingestion.ingest_opportunities(session, "internship", fetcher=fetcher, now=NOW)
+    ingestion.ingest_opportunities(session, "internship", fetcher=fetcher, now=NOW)
+    live = session.scalar(select(models.Opportunity).where(models.Opportunity.source == "serpapi"))
+    assert session.scalar(select(func.count()).select_from(models.OpportunitySkill).where(models.OpportunitySkill.opportunity_id == live.id)) == 3
+    ranked = opportunity_service.get_ranked_opportunities(session, user["user_id"], cid)
+    assert live.id in {row["opportunity_id"] for row in ranked}
+    match = next(row for row in ranked if row["opportunity_id"] == live.id)
+    assert match["source"] == "serpapi" and match["is_seeded"] is False
+    assert {skill["skill_name"] for skill in match["required_skills"]} == {"Python", "SQL"}
+    assert [row for row in ranked if row["is_seeded"]] == seeded_before
+    fetcher.assert_called_once()
+
+
+def test_unrecognized_live_listing_stored_but_unranked(session):
+    from services import user_service, opportunity_service
+    user = user_service.create_user(session, "Student", "unknown@example.com", "BSc", "CS", 1)
+    cid = user_service.list_careers(session)[0]["career_id"]
+    ingestion.ingest_opportunities(session, "internship", fetcher=Mock(return_value=results(raw_job(description="Required: enthusiasm"))), now=NOW)
+    live = session.scalar(select(models.Opportunity).where(models.Opportunity.source == "serpapi"))
+    assert live is not None and live.skills == []
+    assert live.id not in {row["opportunity_id"] for row in opportunity_service.get_ranked_opportunities(session, user["user_id"], cid)}
